@@ -1,0 +1,2708 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Salem 1692 — Medieval Tabletop 3D</title>
+  
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Charm:wght@400;700&family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@600;700;800;900&family=IM+Fell+English+SC&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --wood-dark: #140d09;
+      --wood-mid: #2b1d14;
+      --wood-light: #443022;
+      --parchment: #f2e3c6;
+      --parchment-dark: #d8c29d;
+      --crimson: #7a1c14;
+      --gold: #d4af37;
+    }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background-color: #070403;
+      background-image: radial-gradient(circle at 50% 40%, #1c110b 0%, #050201 100%);
+      color: #ede2d3;
+      min-height: 100vh;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    .font-cinzel { font-family: 'Cinzel', 'Charm', serif; }
+    .font-medieval { font-family: 'Cinzel Decorative', 'IM Fell English SC', 'Charm', serif; }
+    .font-fell { font-family: 'IM Fell English SC', 'Charm', serif; }
+
+    .medieval-modal {
+      background: 
+        radial-gradient(circle at center, rgba(45, 24, 16, 0.96) 0%, rgba(18, 9, 6, 0.99) 100%),
+        repeating-linear-gradient(45deg, rgba(0,0,0,0.2) 0px, rgba(0,0,0,0.2) 2px, transparent 2px, transparent 6px);
+      border: 3px solid #8a6327;
+      box-shadow: 
+        0 0 0 1px #261707,
+        inset 0 0 30px rgba(0, 0, 0, 0.9),
+        0 25px 60px rgba(0, 0, 0, 0.95);
+      position: relative;
+    }
+    .medieval-modal::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      pointer-events: none;
+      border-radius: inherit;
+    }
+
+    .tts-room-viewport {
+      perspective: 1300px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 6px 0;
+    }
+
+    .tabletop-surface {
+      width: 100%;
+      max-width: 1240px;
+      height: 610px;
+      background: 
+        radial-gradient(ellipse at 50% 50%, rgba(255, 230, 190, 0.14) 0%, rgba(80, 50, 32, 0.35) 45%, rgba(12, 7, 4, 0.92) 90%, #050201 100%),
+        repeating-linear-gradient(
+          180deg,
+          rgba(25, 15, 9, 0.55) 0px,
+          rgba(42, 27, 18, 0.55) 3px,
+          rgba(20, 12, 7, 0.65) 7px,
+          rgba(34, 22, 14, 0.55) 12px
+        ),
+        linear-gradient(90deg, #1b110b 0%, #332218 50%, #1b110b 100%);
+      border-radius: 48px;
+      border: 6px solid #2b180e;
+      box-shadow: 
+        inset 0 0 110px rgba(0, 0, 0, 0.95),
+        0 28px 55px rgba(0, 0, 0, 0.95),
+        0 8px 0 #140a05;
+      position: relative;
+      transform: rotateX(14deg);
+      transform-style: preserve-3d;
+      transition: transform 0.4s ease;
+    }
+
+    .tabletop-surface::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 42px;
+      background-image: 
+        radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 60%),
+        repeating-linear-gradient(90deg, transparent 0, transparent 40px, rgba(255,255,255,0.012) 41px, transparent 43px);
+      pointer-events: none;
+    }
+
+    .ghost-seat-slot {
+      position: absolute;
+      display: flex;
+      gap: 3px;
+      padding: 4px;
+      background: rgba(20, 11, 6, 0.45);
+      border: 1px solid rgba(120, 80, 50, 0.18);
+      border-radius: 4px;
+      pointer-events: none;
+      opacity: 0.45;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.7);
+    }
+    .ghost-card {
+      width: 34px;
+      height: 50px;
+      background: rgba(65, 42, 26, 0.45);
+      border: 1px solid rgba(140, 95, 60, 0.25);
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 6px;
+      font-family: 'Cinzel', serif;
+      color: rgba(210, 170, 130, 0.35);
+      text-align: center;
+    }
+
+    .tryal-card-tts {
+      width: 44px;
+      height: 66px;
+      background: linear-gradient(180deg, #fbd7cc 0%, #f1b8a8 50%, #e6a493 100%);
+      border: 1.5px solid #8e3429;
+      border-radius: 4px;
+      box-shadow: 0 4px 7px rgba(0,0,0,0.75), 0 1.5px 0 #591c15;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 2px;
+      color: #5e1912;
+      position: relative;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .tryal-card-tts::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border: 1px solid rgba(142, 52, 41, 0.45);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+    .tryal-card-tts:hover {
+      transform: translateY(-4px) scale(1.06);
+      z-index: 20;
+    }
+
+    .tryal-card-revealed-tts {
+      width: 44px;
+      height: 66px;
+      border-width: 1.5px;
+      border-style: solid;
+      border-radius: 4px;
+      box-shadow: 0 4px 7px rgba(0,0,0,0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 2px;
+      position: relative;
+      transition: transform 0.2s ease;
+    }
+    .tryal-card-revealed-tts:hover {
+      transform: translateY(-4px) scale(1.08);
+      z-index: 25;
+    }
+
+    /* การ์ดตัวละคร Town Hall บนโต๊ะ คลิกดูข้อมูลได้ */
+    .townhall-card-tts {
+      width: 44px;
+      height: 66px;
+      background: linear-gradient(180deg, #faecc8 0%, #e7cb8d 60%, #d4af69 100%);
+      border: 1.5px solid #754c1b;
+      border-radius: 4px;
+      box-shadow: 0 4px 7px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 3px 2px;
+      color: #3d2008;
+      position: relative;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .townhall-card-tts:hover {
+      transform: translateY(-6px) scale(1.12);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.95), 0 0 12px rgba(245, 158, 11, 0.7);
+      border-color: #f59e0b;
+      z-index: 30;
+    }
+
+    .blue-card-tts {
+      width: 40px;
+      height: 54px;
+      background: linear-gradient(180deg, #e0f2fe 0%, #93c5fd 100%);
+      border: 1.5px solid #1e40af;
+      border-radius: 4px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px;
+      color: #1e3a8a;
+      font-size: 7.5px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .green-card-tts {
+      width: 40px;
+      height: 54px;
+      background: linear-gradient(180deg, #dcfce7 0%, #86efac 100%);
+      border: 1.5px solid #166534;
+      border-radius: 4px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px;
+      color: #14532d;
+      font-size: 7.5px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .tts-deck-back {
+      background-color: #6b4423;
+      background-image: 
+        linear-gradient(135deg, #9c6839 25%, transparent 25%), 
+        linear-gradient(225deg, #9c6839 25%, transparent 25%), 
+        linear-gradient(45deg, #9c6839 25%, transparent 25%), 
+        linear-gradient(315deg, #9c6839 25%, #4d2e16 25%);
+      background-position: 8px 0, 8px 0, 0 0, 0 0;
+      background-size: 16px 16px;
+      background-repeat: repeat;
+      border: 2px solid #e5d1a7;
+      border-radius: 5px;
+      box-shadow: 
+        0 1px 0 #d4be94,
+        0 2px 0 #8a6f47,
+        0 3px 0 #d4be94,
+        0 4px 0 #8a6f47,
+        0 5px 0 #594327,
+        0 12px 20px rgba(0,0,0,0.9);
+      position: relative;
+    }
+
+    .hand-section-panel {
+      background: 
+        linear-gradient(180deg, rgba(36, 20, 13, 0.96) 0%, rgba(16, 8, 5, 0.99) 100%);
+      border-top: 3px solid #785221;
+      border-bottom: 2px solid #3a2010;
+      box-shadow: 0 -10px 30px rgba(0,0,0,0.85), inset 0 2px 15px rgba(212, 175, 55, 0.12);
+    }
+
+    .salem-hand-card {
+      width: 136px;
+      height: 120px;
+      border-radius: 7px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 6px 8px 5px 8px;
+      cursor: pointer;
+      transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+      position: relative;
+    }
+    .salem-hand-card::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+    .salem-hand-card:hover {
+      transform: translateY(-10px) rotate(-1deg);
+      z-index: 30;
+    }
+
+    .hand-card-red {
+      background: radial-gradient(circle at center, #fbe9e7 0%, #f0c4be 65%, #e2a29b 100%);
+      border: 2px solid #8c1d18;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.8), inset 0 0 12px rgba(140, 29, 24, 0.22);
+      color: #3b0a0a;
+    }
+    .hand-card-red::before { border: 1px solid rgba(140, 29, 24, 0.35); }
+    .hand-card-red:hover { box-shadow: 0 14px 24px rgba(0,0,0,0.95), 0 0 15px rgba(220, 38, 38, 0.55); }
+    .card-point-pill-red {
+      background-color: #7f1d1d;
+      color: #fef2f2;
+      border: 1px solid #dc2626;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-size: 10px;
+      font-family: 'Cinzel', serif;
+      font-weight: bold;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .hand-card-green {
+      background: radial-gradient(circle at center, #e8f8ed 0%, #bfe6cd 65%, #9bd4b0 100%);
+      border: 2px solid #166534;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.8), inset 0 0 12px rgba(22, 101, 52, 0.22);
+      color: #092916;
+    }
+    .hand-card-green::before { border: 1px solid rgba(22, 101, 52, 0.35); }
+    .hand-card-green:hover { box-shadow: 0 14px 24px rgba(0,0,0,0.95), 0 0 15px rgba(34, 197, 94, 0.55); }
+    .card-point-pill-green {
+      background-color: #14532d;
+      color: #f0fdf4;
+      border: 1px solid #22c55e;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-size: 10px;
+      font-family: 'Cinzel', serif;
+      font-weight: bold;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .hand-card-blue {
+      background: radial-gradient(circle at center, #e6f2fc 0%, #bad8f5 65%, #94c0eb 100%);
+      border: 2px solid #1e40af;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.8), inset 0 0 12px rgba(30, 64, 175, 0.22);
+      color: #0c1e4a;
+    }
+    .hand-card-blue::before { border: 1px solid rgba(30, 64, 175, 0.35); }
+    .hand-card-blue:hover { box-shadow: 0 14px 24px rgba(0,0,0,0.95), 0 0 15px rgba(59, 130, 246, 0.55); }
+    .card-point-pill-blue {
+      background-color: #1e3a8a;
+      color: #eff6ff;
+      border: 1px solid #3b82f6;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-size: 10px;
+      font-family: 'Cinzel', serif;
+      font-weight: bold;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    .selected-salem-card {
+      border-color: #f59e0b !important;
+      transform: translateY(-14px) scale(1.06) !important;
+      box-shadow: 0 0 22px rgba(245, 158, 11, 0.95) !important;
+      z-index: 40;
+    }
+
+    .target-highlight {
+      animation: pulseTarget 1s infinite alternate ease-in-out;
+      cursor: pointer;
+    }
+    @keyframes pulseTarget {
+      from { filter: drop-shadow(0 0 6px #f59e0b); }
+      to { filter: drop-shadow(0 0 20px #ef4444) brightness(1.15); }
+    }
+
+    .tts-player-tag {
+      padding: 2px 10px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.35);
+      border: 1px solid rgba(0,0,0,0.6);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      letter-spacing: 0.02em;
+    }
+
+    .screen-phase { display: none; }
+    .screen-phase.active { display: flex; animation: smoothFade 0.35s ease forwards; }
+    @keyframes smoothFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="flex flex-col justify-between min-h-screen">
+
+  <header class="w-full max-w-7xl mx-auto px-5 py-2 flex items-center justify-between z-30 bg-[#110805]/95 border-b-2 border-[#5c3c18] shadow-xl">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-b from-amber-600 to-amber-950 flex items-center justify-center font-medieval font-black text-amber-100 text-xs shadow-inner border border-amber-400/50">1692</div>
+      <div>
+        <h1 class="text-base md:text-lg font-medieval font-black tracking-widest text-amber-200 drop-shadow">
+          SALEM <span class="text-amber-400/90 text-[11px] font-fell px-2.5 py-0.5 rounded bg-amber-950/90 border border-amber-600/40 ml-1">Tabletop 3D Edition</span>
+        </h1>
+      </div>
+    </div>
+    <div class="flex items-center gap-2.5">
+      <span id="hud-witch-indicator" class="text-xs font-cinzel px-3 py-1 rounded bg-rose-950 border border-rose-500/60 text-rose-200 font-bold hidden shadow-lg animate-pulse">🧙‍♀️ สถานะ: แม่มด</span>
+      <span id="deck-counter-badge" class="text-xs font-cinzel px-3 py-1 rounded bg-black/70 border border-amber-600/40 text-amber-300 font-bold hidden"></span>
+      <span id="discard-counter-badge" class="text-xs font-cinzel px-3 py-1 rounded bg-black/70 border border-stone-600/50 text-stone-300 font-bold hidden"></span>
+      <span id="hud-phase-txt" class="text-xs font-cinzel px-3 py-1 rounded bg-black/70 border border-amber-600/40 text-amber-300 font-bold tracking-wider">LOBBY</span>
+    </div>
+  </header>
+
+  <main class="w-full max-w-7xl mx-auto flex-1 flex flex-col justify-center px-2 py-1 relative z-10">
+
+    <!-- LOBBY PHASE -->
+    <section id="phase-lobby" class="screen-phase active flex-col items-center justify-center my-auto">
+      <div class="medieval-modal rounded-2xl p-7 max-w-2xl w-full text-center space-y-5">
+        <div id="lobby-login-box" class="space-y-4 max-w-md mx-auto">
+          <div class="w-16 h-16 rounded-full mx-auto bg-gradient-to-b from-amber-700/40 to-stone-950 border-2 border-amber-500/50 flex items-center justify-center text-3xl shadow-2xl">⚖️</div>
+          <h2 class="text-2xl md:text-3xl font-medieval font-black text-amber-200 tracking-wide">ศาลไต่สวนเซเลม 1692</h2>
+          <p class="text-xs text-amber-400/70 font-fell tracking-widest uppercase">The Colonial Witchcraft Trials</p>
+          <input type="text" id="player-name-inp" placeholder="จารึกนามของท่าน..." maxlength="12" class="w-full bg-black/60 border-2 border-[#63421c] rounded-lg p-3 text-center text-amber-100 text-sm focus:outline-none focus:border-amber-400 font-cinzel">
+          <button onclick="createRoom()" class="w-full py-3 bg-gradient-to-b from-amber-600 to-amber-900 text-amber-50 font-cinzel font-black text-sm rounded-lg shadow-xl border border-amber-400/40 hover:brightness-110 cursor-pointer">
+            👑 สถาปนาห้องศาลใหม่ (Host)
+          </button>
+          <div class="text-[11px] text-stone-400 font-cinzel">— หรือระบุตราประทับ 4 หลัก —</div>
+          <input type="text" id="room-code-inp" placeholder="ROOM CODE" maxlength="4" class="w-full bg-black/60 border-2 border-stone-800 rounded-lg p-2.5 text-center uppercase tracking-widest text-lg font-cinzel font-black text-amber-300 focus:outline-none focus:border-amber-600">
+          <button onclick="joinRoom()" class="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-amber-200 font-cinzel text-xs font-bold rounded-lg border border-amber-700/30 cursor-pointer">
+            🚪 ก้าวเข้าสู่ห้องพิจารณาคดี
+          </button>
+        </div>
+
+        <div id="lobby-waiting-box" class="hidden space-y-4 text-left">
+          <div class="flex justify-between items-center pb-3 border-b border-amber-500/20">
+            <div>
+              <div class="text-[10px] text-amber-400 font-cinzel tracking-widest">COURT INVITATION SEAL</div>
+              <div id="display-room-code" class="text-3xl font-medieval font-black text-amber-300 tracking-widest">----</div>
+            </div>
+            <div class="text-xs font-cinzel px-3.5 py-1.5 rounded-lg bg-black/60 border border-amber-500/30 text-amber-200" id="display-player-count">
+              0 / 12 ผู้เล่น
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-black/45 border border-amber-600/25 space-y-3">
+            <div class="flex justify-between items-center border-b border-white/10 pb-2">
+              <span class="text-xs font-cinzel font-bold text-amber-400 flex items-center gap-1.5">
+                <i data-lucide="scroll" class="w-3.5 h-3.5"></i> กฎบัตรประจำศาลเซเลม
+              </span>
+              <span id="host-only-hint" class="text-[10px] text-stone-400"></span>
+            </div>
+            <label class="flex items-center justify-between p-2.5 rounded-lg bg-stone-950/70 border border-white/5 cursor-pointer">
+              <div>
+                <div class="font-bold text-xs text-amber-200 font-cinzel">โหมดความสามารถตัวละครชาวเมือง (15 Town Hall Characters)</div>
+                <div class="text-[10px] text-stone-400">สุ่มแจกการ์ดตัวละครวางบนโต๊ะ (คลิกที่การ์ดตัวละครบนโต๊ะเพื่อดูความสามารถได้)</div>
+              </div>
+              <input type="checkbox" id="opt-character-abilities" checked onchange="syncLobbyOptions()" class="w-4 h-4 accent-amber-600 cursor-pointer">
+            </label>
+
+            <div class="p-2.5 rounded-lg bg-stone-950/70 border border-white/5 space-y-2">
+              <div class="text-xs font-bold text-amber-200 font-cinzel">การ์ดไต่สวนพิเศษ (แทนที่ Not a Witch ใบต่อใบ):</div>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <label class="flex items-center justify-between p-2 rounded bg-black/50 border border-white/5 cursor-pointer">
+                  <span class="text-stone-300 text-[11px] font-cinzel">🎭 Charlatan (นักต้มตุ๋น)</span>
+                  <input type="checkbox" id="opt-tryal-charlatan" onchange="syncLobbyOptions()" class="w-4 h-4 accent-amber-600 cursor-pointer">
+                </label>
+                <label class="flex items-center justify-between p-2 rounded bg-black/50 border border-white/5 cursor-pointer">
+                  <span class="text-stone-300 text-[11px] font-cinzel">⛏️ Gravedigger (สัปเหร่อ)</span>
+                  <input type="checkbox" id="opt-tryal-gravedigger" onchange="syncLobbyOptions()" class="w-4 h-4 accent-amber-600 cursor-pointer">
+                </label>
+                <label class="flex items-center justify-between p-2 rounded bg-black/50 border border-white/5 cursor-pointer">
+                  <span class="text-stone-300 text-[11px] font-cinzel">🔍 Inquisitor (ผู้สอบสวน)</span>
+                  <input type="checkbox" id="opt-tryal-inquisitor" onchange="syncLobbyOptions()" class="w-4 h-4 accent-amber-600 cursor-pointer">
+                </label>
+                <label class="flex items-center justify-between p-2 rounded bg-black/50 border border-white/5 cursor-pointer">
+                  <span class="text-stone-300 text-[11px] font-cinzel">🧤 Pickpocket (นักล้วง)</span>
+                  <input type="checkbox" id="opt-tryal-pickpocket" onchange="syncLobbyOptions()" class="w-4 h-4 accent-amber-600 cursor-pointer">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="text-xs font-cinzel text-amber-400 uppercase tracking-wider mb-2">รายนามผู้เข้าร่วมโต๊ะไต่สวน:</div>
+            <ul id="lobby-players-list" class="space-y-1.5 max-h-36 overflow-y-auto pr-1"></ul>
+          </div>
+
+          <button id="btn-start-court" onclick="startCourtGame()" class="w-full py-3.5 bg-stone-900 text-stone-600 font-cinzel font-bold text-sm rounded-lg border border-stone-800 cursor-not-allowed" disabled>
+            รอสหายอย่างน้อย 3 คน
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- REVEAL PHASE -->
+    <section id="phase-reveal" class="screen-phase flex-col items-center justify-center my-auto">
+      <div class="medieval-modal rounded-2xl p-7 max-w-lg w-full text-center space-y-5">
+        <h2 class="text-xl font-medieval font-black text-amber-200">ชะตากรรมการ์ดไต่สวนของท่าน</h2>
+        <div id="my-tryals-grid" class="grid grid-cols-5 gap-2.5 my-3"></div>
+        <div class="text-xs text-amber-400/90 animate-pulse font-cinzel">🕯️ รุ่งอรุณแรก (The Dawn) กำลังจะเริ่มขึ้น...</div>
+      </div>
+    </section>
+
+    <!-- DAWN PHASE -->
+    <section id="phase-dawn" class="screen-phase flex-col items-center justify-center my-auto">
+      <div class="medieval-modal rounded-2xl p-7 max-w-xl w-full text-center space-y-5">
+        <div class="w-14 h-14 mx-auto rounded-full bg-rose-950/90 border-2 border-amber-500/50 flex items-center justify-center text-xl font-cinzel font-black text-amber-300 shadow-lg" id="dawn-timer-num">--</div>
+        <div class="bg-black/50 p-4 rounded-xl border border-amber-500/20">
+          <div id="dawn-voice-subtitles" class="text-lg md:text-xl font-cinzel font-black text-amber-200">"ทุกคนในหมู่บ้านหลับตา"</div>
+        </div>
+        <div id="dawn-step-content" class="min-h-[140px] flex flex-col justify-center items-center"></div>
+      </div>
+    </section>
+
+    <!-- COURT PHASE (3D TABLETOP SIMULATOR LAYOUT) -->
+    <section id="phase-court" class="screen-phase flex-col space-y-1.5">
+      
+      <div class="tts-room-viewport">
+        <div class="tabletop-surface" id="tts-table-surface">
+          
+          <div class="absolute top-3 left-6 right-6 flex justify-between items-center gap-2 z-30 pointer-events-none">
+            <div id="target-mode-indicator" class="hidden font-cinzel text-amber-100 bg-rose-950/95 border-2 border-amber-400 px-4 py-1 rounded-full animate-pulse shadow-2xl text-xs pointer-events-auto">
+              🎯 คลิกเลือกผู้เล่นรอบโต๊ะที่ต้องการร่ายการ์ดใส่
+            </div>
+            <div id="live-court-log-banner" class="bg-black/75 border border-amber-500/30 px-3.5 py-1 rounded-full text-[11px] text-stone-200 truncate max-w-md shadow-lg">
+              📜 ศาลไต่สวนเซเลมเริ่มต้นขึ้นแล้ว... (คลิกที่การ์ดตัวละครสีทองข้างไพ่เพื่ออ่านสกิลได้)
+            </div>
+            <div class="flex items-center gap-2 ml-auto bg-black/75 px-3.5 py-1 rounded-full border border-amber-500/40 shadow-lg pointer-events-auto">
+              <span class="text-amber-500/80 font-fell text-xs">Active Turn:</span>
+              <span id="court-active-player-name" class="text-amber-200 font-cinzel font-bold text-xs">-</span>
+            </div>
+          </div>
+
+          <div class="ghost-seat-slot" style="top: 16%; left: 14%; transform: rotate(-38deg);">
+            <div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div>
+          </div>
+          <div class="ghost-seat-slot" style="top: 16%; right: 14%; transform: rotate(38deg);">
+            <div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div>
+          </div>
+          <div class="ghost-seat-slot" style="bottom: 16%; left: 14%; transform: rotate(38deg);">
+            <div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div>
+          </div>
+          <div class="ghost-seat-slot" style="bottom: 16%; right: 14%; transform: rotate(-38deg);">
+            <div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div><div class="ghost-card">TRYAL</div>
+          </div>
+
+          <div class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+            <div class="relative flex items-center justify-center gap-3 px-8 py-5 rounded-3xl">
+              
+              <div class="w-14 h-20 rounded bg-gradient-to-b from-[#f5deb3] to-[#c89d54] border-2 border-[#5c3310] shadow-2xl flex flex-col items-center justify-between p-1.5 text-center transform -rotate-12 -translate-x-2">
+                <span class="text-[7px] font-cinzel font-black text-[#3b1d06] leading-tight tracking-tighter">TOWN<br>HALL</span>
+                <div class="w-7 h-9 rounded-t-full bg-[#3b1d06] flex items-center justify-center text-amber-300 text-xs shadow-inner">🔔</div>
+                <span class="text-[5px] font-fell text-[#3b1d06]">SALEM 1692</span>
+              </div>
+
+              <div class="flex flex-col items-center gap-2">
+                <div id="center-blackcat-prop" class="w-20 h-12 rounded bg-[#f4e8cf] border-2 border-[#3b4c5e] shadow-xl flex items-center justify-between px-2 py-1">
+                  <div class="text-left">
+                    <div class="text-[6px] font-cinzel font-black text-stone-900">BLACK CAT</div>
+                    <div class="text-[5px] text-stone-600 leading-none">FIRST PLAYER</div>
+                  </div>
+                  <span class="text-lg">🐈‍⬛</span>
+                </div>
+
+                <div class="w-15 h-22 px-3 py-4 tts-deck-back flex flex-col items-center justify-between cursor-pointer hover:scale-105 transition pointer-events-auto group" onclick="actDrawTwo()" title="คลิกเพื่อจั่วการ์ด 2 ใบ">
+                  <span class="text-[7px] font-cinzel font-black text-amber-100 bg-black/70 px-1.5 py-0.5 rounded border border-amber-400/30 group-hover:bg-amber-900">SALEM</span>
+                  <div class="w-4 h-4 rotate-45 border border-amber-300/50 bg-amber-500/20 my-1"></div>
+                  <span class="text-[6px] font-cinzel font-bold text-amber-200">1692</span>
+                </div>
+              </div>
+
+              <div class="flex flex-col items-center gap-2 translate-x-2">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-6 h-3.5 rounded-sm bg-gradient-to-b from-[#8b4513] to-[#4a2105] border border-[#2b1101] shadow-md flex items-center justify-center" title="Gavel Token">
+                    <div class="w-1 h-3.5 bg-[#d2b48c] opacity-60"></div>
+                  </div>
+                  <div class="w-4 h-4 rounded-full bg-gradient-to-tr from-yellow-600 via-amber-300 to-yellow-100 border border-amber-900 shadow-md flex items-center justify-center text-[6px] font-bold text-amber-950">
+                    ✦
+                  </div>
+                  <div class="w-9 h-9 rounded-full bg-gradient-to-b from-stone-700 via-stone-900 to-black border-2 border-stone-600 shadow-2xl flex items-center justify-center relative">
+                    <span class="text-[9px] text-stone-400">🪢</span>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <div class="w-12 h-16 rounded border border-amber-100/25 bg-amber-50/10 backdrop-blur-[1px] shadow-inner flex flex-col items-center justify-center p-1">
+                    <span class="text-[6px] font-cinzel text-amber-100/50 text-center">DISCARD<br>PILE</span>
+                  </div>
+                  <div class="w-12 h-16 rounded border border-amber-100/20 bg-amber-50/5 backdrop-blur-[1px] shadow-inner flex items-center justify-center transform rotate-12">
+                    <span class="text-[6px] font-cinzel text-amber-100/40">NIGHT</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div id="court-players-board" class="absolute inset-0 z-20 pointer-events-none"></div>
+
+        </div>
+      </div>
+
+      <div class="hand-section-panel p-3 rounded-2xl shadow-2xl relative z-30">
+        <div id="hand-limit-warning" class="hidden mb-2 px-3 py-1.5 bg-rose-950 border border-rose-500 text-rose-200 text-xs font-bold rounded-lg text-center animate-pulse shadow-lg"></div>
+        
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-2 px-2">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 text-[#e5caa2] text-xs font-cinzel font-bold tracking-wider">
+              <span>📜 การ์ดในมือของท่าน (YOUR HAND)</span>
+            </div>
+            <!-- ป้ายตัวละครของเรา (คลิกดูความสามารถตัวเองได้) -->
+            <button id="my-char-quick-badge" onclick="openCharacterModalBySocketId(myId)" class="hidden px-2.5 py-0.5 rounded bg-amber-900/50 hover:bg-amber-800/70 border border-amber-500/40 text-amber-200 text-[11px] font-cinzel transition cursor-pointer">
+              👤 ตัวละคร: -
+            </button>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <!-- ปุ่มกดสกิลพิเศษของตัวละคร (ทิทูบา / แซมมูเอล แพร์ริส) -->
+            <button id="btn-skill-tituba" onclick="requestTitubaSkill()" class="hidden px-3 py-1 rounded bg-purple-950 hover:bg-purple-900 border border-purple-400 text-purple-100 text-xs font-cinzel font-bold transition cursor-pointer shadow-lg">
+              🔮 สกิลทิทูบา: เรียงกองจั่ว (1/1)
+            </button>
+            <button id="btn-skill-samuel" onclick="requestSamuelSkill()" class="hidden px-3 py-1 rounded bg-emerald-950 hover:bg-emerald-900 border border-emerald-400 text-emerald-100 text-xs font-cinzel font-bold transition cursor-pointer shadow-lg">
+              ♻️ สกิลแซมมูเอล: จั่วกองทิ้ง (2/2)
+            </button>
+
+            <button onclick="openMyTryalsPeekModal()" class="px-3 py-1 rounded bg-amber-950/90 hover:bg-amber-900 border border-amber-500/50 text-amber-200 text-xs font-cinzel font-bold transition flex items-center gap-1.5 cursor-pointer shadow">
+              👁️ ส่องการ์ดไต่สวนของฉัน
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row items-center justify-between gap-3 px-2">
+          <div class="flex items-center gap-3">
+            <div class="flex flex-col items-center">
+              <div id="city-draw-deck-card" class="w-12 h-18 py-2.5 tts-deck-back cursor-pointer hover:scale-105 transition flex flex-col items-center justify-between p-1 shadow-xl" onclick="actDrawTwo()" title="คลิกเพื่อจั่ว 2 ใบ">
+                <span class="text-[6px] font-cinzel font-black text-amber-200 bg-black/70 px-1 rounded">SALEM</span>
+                <span class="text-[6px] font-cinzel font-bold text-amber-200">1692</span>
+              </div>
+              <span class="text-[9px] text-amber-400/90 font-cinzel mt-1.5">จั่ว 2 ใบ</span>
+            </div>
+            <div class="h-14 w-px bg-amber-500/20 hidden md:block"></div>
+          </div>
+
+          <div id="court-my-hand" class="flex-1 flex flex-wrap gap-2.5 items-center justify-center min-h-[124px]"></div>
+
+          <div class="flex items-center gap-2">
+            <button id="btn-draw-two" onclick="actDrawTwo()" class="px-4 py-2.5 rounded-lg bg-stone-900 border border-amber-500/40 text-amber-200 text-xs font-cinzel font-bold hover:bg-stone-800 transition cursor-pointer">
+              🎴 จั่ว 2 ใบจบเทิร์น
+            </button>
+            <button id="btn-finish-play" onclick="actFinishTurn()" class="px-4 py-2.5 rounded-lg bg-stone-950 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold transition cursor-not-allowed" disabled>
+              ✓ จบเทิร์น
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NIGHT PHASE -->
+    <section id="phase-night" class="screen-phase flex-col items-center justify-center my-auto">
+      <div class="medieval-modal rounded-2xl p-6 md:p-8 max-w-3xl w-full space-y-5">
+        <div class="text-center pb-3 border-b border-amber-500/20">
+          <h2 class="text-2xl font-medieval font-black text-rose-500">รัตติกาลลอบสังหาร (Night Phase)</h2>
+          <p class="text-xs text-stone-400 mt-1 font-cinzel">ความมืดเข้าปกคลุมเซเลม... ผู้มีภารกิจลับตื่นขึ้นปฏิบัติการ</p>
+        </div>
+
+        <div id="townsperson-sleep-box" class="py-12 flex flex-col items-center justify-center text-center space-y-3">
+          <span class="text-4xl animate-pulse">🌑</span>
+          <h3 class="text-lg font-cinzel font-bold text-amber-200">ท่านกำลังหลับใหลอย่างสงบ...</h3>
+          <p class="text-xs text-stone-400 max-w-sm">
+            ในค่ำคืนนี้ท่านไม่มีภารกิจลับใด ๆ จงหลับตาลงและรอสัญญาณสารภาพบาปก่อนรุ่งสาง
+          </p>
+        </div>
+
+        <div id="constable-gavel-box" class="hidden p-4 rounded-xl bg-amber-950/40 border border-amber-500/40 text-center space-y-3 mb-3"></div>
+
+        <div id="witch-coven-box" class="hidden grid grid-cols-1 md:grid-cols-12 gap-4">
+          <div class="md:col-span-7 flex flex-col h-[260px] bg-black/50 border border-rose-900/60 rounded-xl p-3">
+            <div id="witch-chat-messages" class="flex-1 overflow-y-auto space-y-1.5 text-xs pr-1"></div>
+            <div class="flex gap-2 pt-2">
+              <input type="text" id="witch-chat-inp" placeholder="กระซิบกับสหายแม่มด..." class="flex-1 bg-stone-950 border border-amber-500/20 rounded-lg px-3 py-1.5 text-xs text-amber-100 focus:outline-none">
+              <button onclick="sendWitchChat()" class="px-3 py-1.5 bg-rose-900 text-amber-100 rounded-lg text-xs font-cinzel font-bold">ส่ง</button>
+            </div>
+          </div>
+          <div class="md:col-span-5 flex flex-col justify-between bg-black/40 border border-amber-500/20 rounded-xl p-3.5">
+            <div>
+              <div id="night-lead-display" class="text-xs font-bold text-rose-400 mb-2 font-cinzel"></div>
+              <div id="night-kill-targets" class="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFESSION PHASE -->
+    <section id="phase-confession" class="screen-phase flex-col items-center justify-center my-auto">
+      <div class="medieval-modal rounded-2xl p-6 md:p-8 max-w-xl w-full text-center space-y-4">
+        <div class="w-14 h-14 mx-auto rounded-full bg-amber-950/90 border-2 border-amber-500/50 flex items-center justify-center text-xl font-cinzel font-black text-amber-300" id="confession-timer-num">10</div>
+        <h2 class="text-xl font-medieval font-black text-amber-200">การสารภาพบาป (The Confession)</h2>
+        <p class="text-xs text-stone-300 leading-relaxed">
+          หากท่านหวั่นเกรงคมมีดของแม่มด ท่านสามารถเลือก <b>"สารภาพบาป"</b> เพื่อรอดพ้นความตายในคืนนี้ได้<br>
+          <span class="text-amber-400">*ผู้สารภาพบาปจะต้องหงายการ์ดไต่สวนของตน 1 ใบ</span>
+        </p>
+
+        <!-- ปุ่มสกิลพิเศษ วิลเลียม ฟิปส์ (สารภาพโดยไม่ต้องหงายการ์ด 1 ครั้งในเกม) -->
+        <button id="btn-phips-free-confess" onclick="submitPhipsFreeConfession()" class="hidden w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-600 text-stone-950 font-cinzel font-black text-xs shadow-xl hover:brightness-110 cursor-pointer">
+          ✨ ใช้สกิลวิลเลียม ฟิปส์: สารภาพบาปโดยไม่ต้องหงายการ์ด (1/1 ครั้ง)
+        </button>
+
+        <div id="my-confession-tryals" class="grid grid-cols-5 gap-2 py-2 justify-items-center"></div>
+        <button id="btn-confess-action" onclick="submitConfession()" disabled class="w-full py-3 rounded-lg bg-stone-900 text-stone-600 font-cinzel font-bold text-xs cursor-not-allowed">
+          เลือกการ์ด 1 ใบเพื่อสารภาพบาป
+        </button>
+      </div>
+    </section>
+
+    <!-- GAME OVER PHASE -->
+    <section id="phase-gameover" class="screen-phase flex-col items-center justify-center p-2 my-auto">
+      <div class="medieval-modal rounded-2xl p-6 md:p-8 max-w-4xl w-full space-y-6 flex flex-col max-h-[90vh]">
+        <div class="text-center pb-4 border-b border-amber-500/20 shrink-0">
+          <h2 id="gameover-winner" class="text-3xl md:text-4xl font-medieval font-black text-amber-400 drop-shadow-lg"></h2>
+          <p id="gameover-reason" class="text-sm text-stone-300 mt-2 font-cinzel"></p>
+        </div>
+        
+        <div class="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 overflow-hidden">
+          <div class="flex flex-col min-h-0 bg-black/50 border border-amber-500/20 rounded-xl p-4">
+            <h3 class="text-amber-200 font-cinzel font-bold mb-3 border-b border-white/10 pb-2">
+              <span>👥 ชะตากรรมของทุกคนในศาล</span>
+            </h3>
+            <div id="gameover-players-list" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
+          </div>
+
+          <div class="flex flex-col min-h-0 bg-black/50 border border-amber-500/20 rounded-xl p-4">
+            <h3 class="text-amber-200 font-cinzel font-bold mb-3 border-b border-white/10 pb-2">
+              <span>📜 บันทึกพงศาวดารการไต่สวน</span>
+            </h3>
+            <div id="gameover-log-list" class="flex-1 overflow-y-auto space-y-2 pr-2 text-[11px] md:text-xs text-stone-300 font-sans"></div>
+          </div>
+        </div>
+
+        <div class="shrink-0 pt-2">
+          <button onclick="location.reload()" class="w-full py-3.5 bg-gradient-to-r from-amber-700 to-rose-900 text-stone-950 font-cinzel font-black text-sm rounded-lg shadow-xl hover:brightness-110 transition cursor-pointer">
+            🚪 ปิดฉากศาลเซเลม (กลับสู่หน้าล็อบบี้)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODAL แสดงข้อมูลการ์ดตัวละครบนโต๊ะ (Town Hall Character Info Modal) -->
+    <div id="character-info-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal rounded-2xl p-6 max-w-md w-full text-center space-y-4">
+        <div class="w-16 h-20 mx-auto rounded-lg bg-gradient-to-b from-[#faecc8] to-[#d4af69] border-2 border-[#754c1b] flex flex-col items-center justify-between p-1.5 text-[#3d2008] shadow-2xl">
+          <span class="text-[7px] font-cinzel font-black uppercase">TOWN HALL</span>
+          <span class="text-2xl">👤</span>
+          <span class="text-[6px] font-fell uppercase">CITIZEN</span>
+        </div>
+        <div>
+          <div id="char-modal-owner" class="text-xs font-cinzel text-amber-400 mb-1"></div>
+          <h3 id="char-modal-name" class="font-cinzel text-xl font-black text-amber-100"></h3>
+          <div id="char-modal-en" class="text-xs font-fell text-stone-400"></div>
+        </div>
+        <div class="p-3.5 rounded-xl bg-black/55 border border-amber-500/30 text-left space-y-2">
+          <div class="text-xs font-cinzel font-bold text-amber-300">📜 ความสามารถประจำตัว:</div>
+          <p id="char-modal-desc" class="text-xs text-stone-200 leading-relaxed"></p>
+          <div id="char-modal-martha-box" class="hidden pt-2 border-t border-white/10 text-xs text-purple-300"></div>
+          <div id="char-modal-charges" class="hidden pt-1 text-[11px] text-emerald-300 font-cinzel"></div>
+        </div>
+        <button onclick="closeCharacterModal()" class="w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-900 text-stone-950 font-cinzel font-black text-xs shadow-lg cursor-pointer">
+          ปิดหน้าต่าง
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL สกิลแซมมูเอล แพร์ริส: เลือกหยิบการ์ด 2 ใบจากกองทิ้ง -->
+    <div id="samuel-discard-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-6 rounded-2xl max-w-2xl w-full text-center space-y-4">
+        <div class="text-3xl">♻️</div>
+        <h3 class="font-cinzel text-lg font-bold text-emerald-300">ความสามารถแซมมูเอล แพร์ริส (Samuel Parris)</h3>
+        <p class="text-xs text-stone-300 leading-relaxed">
+          คลิกเลือกการ์ด <b class="text-amber-400">2 ใบ</b> จากกองทิ้งด้านล่างเพื่อนำขึ้นมือ (แทนการจั่วปกติในเทิร์นนี้):
+        </p>
+        <div id="samuel-discard-grid" class="flex flex-wrap gap-2.5 justify-center max-h-64 overflow-y-auto p-2 bg-black/40 rounded-xl border border-white/10"></div>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button onclick="closeSamuelModal()" class="py-2.5 rounded-lg bg-stone-900 border border-stone-700 text-stone-300 text-xs font-cinzel cursor-pointer">ยกเลิก</button>
+          <button id="btn-confirm-samuel" onclick="confirmSamuelPick()" disabled class="py-2.5 rounded-lg bg-stone-950 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed">
+            เลือกการ์ดให้ครบ 2 ใบ
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL สกิลทิทูบา: จัดเรียงลำดับการ์ดในกองจั่วภายใน 60 วินาที -->
+    <div id="tituba-reorder-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-6 rounded-2xl max-w-3xl w-full text-center space-y-3.5 max-h-[92vh] flex flex-col">
+        <div class="flex items-center justify-between border-b border-amber-500/20 pb-2 shrink-0">
+          <div class="text-left">
+            <h3 class="font-cinzel text-lg font-bold text-purple-300">🔮 ความสามารถทิทูบา (Tituba) — จัดเรียงกองจั่ว</h3>
+            <p class="text-[11px] text-stone-300">คลิกการ์ดในกองด้านล่างเพื่อดึงขึ้นมาเรียงเป็น <b>"ใบบนสุดของกองจั่ว"</b> ตามลำดับ (ใบที่ 1 คือใบที่จะถูกจั่วใบแรกสุด)</p>
+          </div>
+          <div class="w-12 h-12 rounded-full bg-purple-950 border-2 border-purple-400 flex items-center justify-center text-lg font-cinzel font-black text-amber-200 shrink-0" id="tituba-timer-num">60</div>
+        </div>
+
+        <!-- โซนการ์ดที่จัดเรียงไว้ด้านบนสุดของกองแล้ว -->
+        <div class="text-left space-y-1 shrink-0">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-cinzel font-bold text-amber-300">📌 ลำดับการ์ดใบบนสุดของกองจั่วที่ท่านเลือกไว้ (คลิกที่ใบเพื่อยกเลิก):</span>
+            <button onclick="resetTitubaSelection()" class="text-[11px] text-rose-400 hover:underline font-cinzel cursor-pointer">ล้างลำดับที่เลือกใหม่</button>
+          </div>
+          <div id="tituba-chosen-top-list" class="flex gap-1.5 overflow-x-auto p-2 min-h-[58px] bg-purple-950/30 border border-purple-500/30 rounded-xl items-center"></div>
+        </div>
+
+        <!-- โซนการ์ดที่เหลือในกองจั่ว -->
+        <div class="flex-1 min-h-0 flex flex-col text-left space-y-1">
+          <span class="text-xs font-cinzel text-stone-400">🗂️ การ์ดที่เหลือในกองจั่ว (คลิกเพื่อดึงขึ้นไปต่อคิวด้านบน):</span>
+          <div id="tituba-remaining-pool" class="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-2 bg-black/50 border border-white/10 rounded-xl"></div>
+        </div>
+
+        <div class="shrink-0 pt-1">
+          <button onclick="submitTitubaDeckOrder()" class="w-full py-3 rounded-lg bg-gradient-to-r from-purple-600 to-amber-600 text-stone-950 font-cinzel font-black text-xs shadow-xl cursor-pointer">
+            ✓ ยืนยันการจัดเรียงกองจั่ว (การ์ดที่ไม่ได้เลือกจะเรียงต่อท้ายตามลำดับเดิม)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL เลือกล้างคำสาป (Curse Select) -->
+    <div id="curse-select-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-5 rounded-2xl max-w-md w-full text-center space-y-3">
+        <h3 class="font-cinzel text-lg font-bold text-amber-200">เลือกล้างคำสาป (Curse)</h3>
+        <p id="curse-select-desc" class="text-xs text-stone-300 leading-relaxed"></p>
+        <div id="curse-target-cards" class="flex justify-center gap-3 py-3"></div>
+        <button onclick="cancelCurseAction()" class="mt-2 w-full py-2.5 rounded-lg bg-stone-900 border border-stone-700 text-stone-300 text-xs font-cinzel cursor-pointer">ยกเลิก (เก็บคำสาปไว้ในมือ)</button>
+      </div>
+    </div>
+
+    <!-- MODAL แอบดูการ์ด TRYAL ของเรา -->
+    <div id="peek-my-tryals-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal rounded-2xl p-6 max-w-md w-full text-center space-y-4">
+        <div class="text-2xl">📜</div>
+        <h3 class="font-cinzel text-lg font-bold text-amber-200">การ์ดไต่สวนของท่าน (Tryal Cards)</h3>
+        <p class="text-xs text-stone-400">ท่านสามารถตรวจสอบสถานะการ์ดไต่สวนของตนเองได้ตลอดเวลา</p>
+        <div id="peek-tryals-grid" class="grid grid-cols-5 gap-2 py-2"></div>
+        <button onclick="closeMyTryalsPeekModal()" class="w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-900 text-stone-950 font-cinzel font-bold text-xs shadow-lg cursor-pointer">
+          ปิดหน้าต่าง
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL ยืนยันการใช้การ์ด (รองรับปุ่มพิเศษของ วิลล์ กริกส์ เมื่อเล่น Alibi) -->
+    <div id="confirm-action-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-5 rounded-2xl max-w-sm w-full text-center space-y-3.5">
+        <h3 class="font-cinzel text-lg font-bold text-amber-200">ยืนยันคำตัดสิน</h3>
+        <p id="confirm-modal-desc" class="text-xs text-stone-300 leading-relaxed"></p>
+        
+        <!-- ปุ่มปกติ -->
+        <div id="confirm-normal-buttons" class="grid grid-cols-2 gap-2 pt-1">
+          <button onclick="cancelPendingAction()" class="py-2 rounded-lg bg-stone-900 border border-white/10 text-stone-400 text-xs font-cinzel cursor-pointer">ยกเลิก</button>
+          <button onclick="executeConfirmedAction('NORMAL')" class="py-2 rounded-lg bg-gradient-to-r from-amber-600 to-rose-900 text-stone-950 font-bold text-xs font-cinzel shadow-lg cursor-pointer">✓ ยืนยัน</button>
+        </div>
+
+        <!-- ปุ่มพิเศษสำหรับ วิลล์ กริกส์ เมื่อเล่นการ์ด Alibi -->
+        <div id="confirm-will-griggs-buttons" class="hidden space-y-2 pt-1">
+          <button onclick="executeConfirmedAction('NORMAL')" class="w-full py-2.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 border border-emerald-400 text-white font-bold text-xs font-cinzel shadow-lg cursor-pointer">
+            🌿 ใช้เป็นข้อแก้ต่างปกติ (-3 ข้อกล่าวหา)
+          </button>
+          <button onclick="executeConfirmedAction('WITNESS')" class="w-full py-2.5 rounded-lg bg-gradient-to-r from-rose-700 to-amber-600 hover:brightness-110 text-stone-950 font-black text-xs font-cinzel shadow-lg cursor-pointer">
+            👁️ สกิลวิลล์ กริกส์: ใช้เสมือนพยาน (+7 ข้อกล่าวหา!)
+          </button>
+          <button onclick="cancelPendingAction()" class="w-full py-1.5 rounded-lg bg-stone-900 border border-white/10 text-stone-400 text-xs font-cinzel cursor-pointer">ยกเลิก</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL เลือกเปิดการ์ดไต่สวนเหยื่อ -->
+    <div id="pick-tryal-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-5 rounded-2xl max-w-md w-full text-center space-y-3">
+        <h3 class="font-cinzel text-lg font-bold text-amber-200">เลือกเปิดการ์ดไต่สวน (Tryal)</h3>
+        <p id="pick-tryal-desc" class="text-xs text-stone-300"></p>
+        <div id="victim-tryals-container" class="grid grid-cols-5 gap-2 py-2 justify-items-center"></div>
+        <button onclick="confirmVictimTryalSelection()" id="btn-confirm-tryal" disabled class="w-full py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed">เลือกการ์ด 1 ใบ</button>
+      </div>
+    </div>
+
+    <!-- MODAL แมวดำเปิดไพ่ตอน Conspiracy -->
+    <div id="conspiracy-cat-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-5 rounded-2xl max-w-md w-full text-center space-y-3">
+        <div class="text-2xl">🐈‍⬛</div>
+        <h3 class="font-cinzel text-lg font-bold text-amber-200">คำสาปเจตนาร้าย (Conspiracy)</h3>
+        <p class="text-xs text-stone-300">ท่านกำลังถือตราแมวดำ! จงเลือกเปิดการ์ดไต่สวนของตนเอง 1 ใบ:</p>
+        <div id="cat-tryals-container" class="grid grid-cols-5 gap-2 py-2 justify-items-center"></div>
+        <button onclick="confirmCatTryalReveal()" id="btn-confirm-cat-tryal" disabled class="w-full py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed">เลือกการ์ด 1 ใบ</button>
+      </div>
+    </div>
+
+    <!-- MODAL เลือกหยิบการ์ดที่คว่ำอยู่ของเพื่อนทางซ้ายมือ (Conspiracy Pick Left) -->
+    <div id="conspiracy-pick-left-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-6 rounded-2xl max-w-md w-full text-center space-y-3.5">
+        <div class="w-12 h-12 mx-auto rounded-full bg-amber-950/90 border-2 border-amber-500/50 flex items-center justify-center text-lg font-cinzel font-black text-amber-300 shadow" id="conspiracy-pick-timer">15</div>
+        <h3 class="font-cinzel text-lg font-bold text-amber-200">🌀 เจตนาร้าย (Conspiracy)</h3>
+        <p id="conspiracy-pick-left-desc" class="text-xs text-stone-300 leading-relaxed"></p>
+        <div id="conspiracy-left-tryals-container" class="grid grid-cols-5 gap-2 py-2 justify-items-center"></div>
+        <button onclick="confirmConspiracyLeftPick()" id="btn-confirm-conspiracy-pick" disabled class="w-full py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed">
+          เลือกการ์ดที่คว่ำอยู่ 1 ใบ
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL สกิลพิเศษ 1: CHARLATAN -->
+    <div id="charlatan-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-6 rounded-2xl max-w-md w-full text-center space-y-4">
+        <div class="text-3xl">🎭</div>
+        <h3 class="font-cinzel text-lg font-bold text-purple-300">ความสามารถนักต้มตุ๋น (Charlatan)</h3>
+        <p class="text-xs text-stone-300 leading-relaxed">
+          คลิกเลือกผู้เล่นให้ครบ <b id="charlatan-req-count" class="text-amber-400">3</b> คน (รวมตัวเองได้)<br>
+          ระบบจะสุ่มดึงการ์ดไต่สวนที่ยังคว่ำอยู่คนละ 1 ใบมาสับรวมกันแล้วแจกคืนทันที:
+        </p>
+        <div id="charlatan-players-grid" class="grid grid-cols-2 gap-2 py-2 max-h-52 overflow-y-auto pr-1"></div>
+        <button id="btn-confirm-charlatan" onclick="confirmCharlatanSelection()" disabled class="w-full py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed">
+          เลือกผู้เล่นให้ครบตามจำนวน
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL สกิลพิเศษ 2: GRAVEDIGGER -->
+    <div id="gravedigger-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-6 rounded-2xl max-w-lg w-full text-center space-y-4">
+        <div class="text-3xl">⛏️</div>
+        <h3 class="font-cinzel text-lg font-bold text-emerald-300">ความสามารถสัปเหร่อ (Gravedigger)</h3>
+        <p class="text-xs text-stone-300 leading-relaxed">
+          เลือกการ์ดไต่สวนที่หงายอยู่ของผู้เล่นอื่น 1 ใบ เพื่อพลิกคว่ำและสับไพ่ใหม่ทันที<br>
+          <span class="text-emerald-400">*หากเลือกผู้เล่นที่ตายแล้ว (และไม่เคยเป็นแม่มด) เขาจะฟื้นคืนชีพกลับเข้าสู่เกมทันที!</span>
+        </p>
+        <div id="gravedigger-players-list" class="space-y-3 max-h-64 overflow-y-auto pr-1 text-left"></div>
+        <button id="btn-confirm-gravedigger" onclick="confirmGravediggerSelection()" disabled class="w-full py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed">
+          เลือกการ์ดที่หงายอยู่ของผู้เล่นอื่น 1 ใบ
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL สกิลพิเศษ 3: INQUISITOR -->
+    <div id="inquisitor-modal" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-6 rounded-2xl max-w-lg w-full text-center space-y-4">
+        <div class="text-3xl">🔍</div>
+        <h3 class="font-cinzel text-lg font-bold text-sky-300">ความสามารถผู้สอบสวน (Inquisitor)</h3>
+        <p class="text-xs text-stone-300 leading-relaxed">
+          เลือกเปิดการ์ดไต่สวนที่ยังคว่ำอยู่ของผู้เล่นคนใดก็ได้ในเกม 1 ใบทันที:
+        </p>
+        <div id="inquisitor-players-list" class="space-y-3 max-h-64 overflow-y-auto pr-1 text-left"></div>
+        <button id="btn-confirm-inquisitor" onclick="confirmInquisitorSelection()" disabled class="w-full py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed">
+          เลือกการ์ดที่คว่ำอยู่ของผู้เล่นอื่น 1 ใบ
+        </button>
+      </div>
+    </div>
+
+    <!-- MODAL ดูไพ่ที่ได้จาก Conspiracy / Charlatan -->
+    <div id="conspiracy-inspect-modal" class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 hidden backdrop-blur-md">
+      <div class="medieval-modal p-6 rounded-2xl max-w-sm w-full text-center space-y-4">
+        <div class="text-3xl">📜</div>
+        <h3 class="font-cinzel text-lg font-bold text-amber-200">การ์ดไต่สวนใบใหม่ของท่าน</h3>
+        <p id="conspiracy-inspect-desc" class="text-xs text-stone-300"></p>
+        <div id="conspiracy-inspect-card" class="h-24 w-18 mx-auto rounded-xl border flex flex-col items-center justify-center font-cinzel"></div>
+        <button onclick="closeConspiracyInspectModal()" class="w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-900 text-stone-950 font-cinzel font-black text-xs shadow-lg cursor-pointer">
+          ✓ รับทราบและดำเนินเกมต่อ
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const PLAYER_COLORS = [
+      { name: 'Red', color: '#c81e1e' },
+      { name: 'Yellow', color: '#d97706' },
+      { name: 'Blue', color: '#1d4ed8' },
+      { name: 'Green', color: '#15803d' },
+      { name: 'Purple', color: '#7e22ce' },
+      { name: 'Orange', color: '#c2410c' },
+      { name: 'Cyan', color: '#0e7490' },
+      { name: 'Pink', color: '#be185d' }
+    ];
+
+    function getTryalVisual(type) {
+      switch (type) {
+        case 'WITCH':
+          return { icon: '🧙‍♀️', label: 'WITCH', th: 'แม่มด', boxClass: 'bg-rose-950 border-rose-500 text-rose-100 font-bold shadow-[0_0_10px_rgba(225,29,72,0.5)]', badgeClass: 'bg-rose-950 border-rose-500/40 text-rose-200 font-bold' };
+        case 'CONSTABLE':
+          return { icon: '🔨', label: 'CONSTABLE', th: 'สายตรวจ', boxClass: 'bg-amber-950 border-amber-500 text-amber-200 font-bold shadow-[0_0_10px_rgba(245,158,11,0.4)]', badgeClass: 'bg-amber-950 border-amber-500/40 text-amber-200 font-bold' };
+        case 'CHARLATAN':
+          return { icon: '🎭', label: 'CHARLATAN', th: 'นักต้มตุ๋น', boxClass: 'bg-purple-950 border-purple-400 text-purple-100 font-bold shadow-[0_0_10px_rgba(168,85,247,0.5)]', badgeClass: 'bg-purple-950 border-purple-400/40 text-purple-200 font-bold' };
+        case 'GRAVEDIGGER':
+          return { icon: '⛏️', label: 'GRAVEDIGGER', th: 'สัปเหร่อ', boxClass: 'bg-emerald-950 border-emerald-400 text-emerald-100 font-bold shadow-[0_0_10px_rgba(16,185,129,0.5)]', badgeClass: 'bg-emerald-950 border-emerald-400/40 text-emerald-200 font-bold' };
+        case 'INQUISITOR':
+          return { icon: '🔍', label: 'INQUISITOR', th: 'ผู้สอบสวน', boxClass: 'bg-sky-950 border-sky-400 text-sky-100 font-bold shadow-[0_0_10px_rgba(14,165,233,0.5)]', badgeClass: 'bg-sky-950 border-sky-400/40 text-sky-200 font-bold' };
+        case 'PICKPOCKET':
+          return { icon: '🧤', label: 'PICKPOCKET', th: 'นักล้วง', boxClass: 'bg-orange-950 border-orange-400 text-orange-100 font-bold shadow-[0_0_10px_rgba(249,115,22,0.5)]', badgeClass: 'bg-orange-950 border-orange-400/40 text-orange-200 font-bold' };
+        default:
+          return { icon: '🕊️', label: 'NOT A WITCH', th: 'ผู้บริสุทธิ์', boxClass: 'bg-[#f8f0e3] border-stone-700 text-stone-900', badgeClass: 'bg-stone-800 border-white/10 text-stone-400' };
+      }
+    }
+
+    function getHandCardTheme(card) {
+      const isGreen = card.type === 'GREEN' || card.id === 'stocks';
+      const isBlue = card.type === 'BLUE' && card.id !== 'stocks';
+
+      if (isGreen) {
+        let catLabel = 'ACTION';
+        let icon = '⚡';
+        let pillText = 'USE';
+        if (card.id === 'alibi') { catLabel = 'ALIBI'; icon = '🌿'; pillText = '-3'; }
+        else if (card.id === 'robbery') { icon = '💰'; }
+        else if (card.id === 'arson') { icon = '🔥'; }
+        else if (card.id === 'scapegoat') { icon = '🐐'; }
+        else if (card.id === 'curse') { icon = '💀'; }
+        else if (card.id === 'stocks') { catLabel = 'RESTRAIN'; icon = '⛓️'; pillText = 'SKIP'; }
+
+        return {
+          themeClass: 'hand-card-green',
+          headerColor: 'text-[#14532d]',
+          dividerColor: 'bg-[#65a37e]',
+          titleColor: 'text-[#072412]',
+          descColor: 'text-[#184528]',
+          pillClass: 'card-point-pill-green',
+          catLabel,
+          icon,
+          pillText
+        };
+      } else if (isBlue) {
+        let catLabel = 'STATUS';
+        let icon = '✨';
+        let pillText = 'BLUE';
+        if (card.id === 'black_cat') { icon = '🐈‍⬛'; }
+        else if (card.id === 'asylum') { icon = '🏥'; }
+        else if (card.id === 'piety') { icon = '🛡️'; }
+        else if (card.id === 'matchmaker') { icon = '💔'; }
+
+        return {
+          themeClass: 'hand-card-blue',
+          headerColor: 'text-[#1e3a8a]',
+          dividerColor: 'bg-[#6b9cd4]',
+          titleColor: 'text-[#0c1e4a]',
+          descColor: 'text-[#1a3668]',
+          pillClass: 'card-point-pill-blue',
+          catLabel,
+          icon,
+          pillText
+        };
+      } else {
+        let catLabel = 'ACCUSATION';
+        let icon = card.id === 'evidence' ? '📄' : (card.id === 'witness' ? '👁️' : '🩸');
+        let pillText = `+${card.val || 0}`;
+
+        return {
+          themeClass: 'hand-card-red',
+          headerColor: 'text-[#7f1d1d]',
+          dividerColor: 'bg-[#c9837b]',
+          titleColor: 'text-[#3b0a0a]',
+          descColor: 'text-[#5c1919]',
+          pillClass: 'card-point-pill-red',
+          catLabel,
+          icon,
+          pillText
+        };
+      }
+    }
+
+    function getTTS_TryalCardHTML() {
+      return `
+        <div class="tryal-card-tts">
+          <div class="text-[6px] font-cinzel font-black tracking-wider text-[#6e1a12] uppercase leading-none mt-0.5">TRYAL</div>
+          <div class="text-[4.5px] font-fell text-[#8a2a20] leading-none">of</div>
+          <div class="w-4 h-4 rounded-full border border-[#8a2a20]/50 flex items-center justify-center bg-[#fce7e1]/50 my-0.5">
+            <span class="text-[8px]">⚖️</span>
+          </div>
+          <div class="text-[4.5px] font-cinzel font-bold text-[#6e1a12] leading-none uppercase tracking-tighter mb-0.5">WITCHCRAFT</div>
+        </div>
+      `;
+    }
+
+    // คำนวณว่าผู้เล่นคนนั้นมีความสามารถอะไร (รองรับ มาร์ธา คอรีย์ ที่เลียนแบบคนถัดไปทางขวามือที่ยังรอดชีวิต)
+    function getEffectiveCharInfo(room, player) {
+      if (!room || !room.options || !room.options.useCharacterAbilities || !player || !player.char) {
+        return { baseChar: null, effectiveChar: null, copiedFrom: null };
+      }
+      if (player.char.id !== 'martha') {
+        return { baseChar: player.char, effectiveChar: player.char, copiedFrom: null };
+      }
+      const players = room.players || [];
+      const myIdx = players.findIndex(p => p && p.socketId === player.socketId);
+      if (myIdx === -1 || players.length < 2) {
+        return { baseChar: player.char, effectiveChar: player.char, copiedFrom: null };
+      }
+      // หาคนถัดไปทางขวามือ (ทวนเข็มนาฬิกา: index - 1) ที่ยังมีชีวิตอยู่
+      for (let step = 1; step < players.length; step++) {
+        const rightIdx = (myIdx - step + players.length) % players.length;
+        const rightP = players[rightIdx];
+        if (rightP && rightP.isAlive && rightP.char) {
+          return {
+            baseChar: player.char,
+            effectiveChar: rightP.char,
+            copiedFrom: rightP
+          };
+        }
+      }
+      return { baseChar: player.char, effectiveChar: player.char, copiedFrom: null };
+    }
+
+    const socket = io();
+    let currentRoomCode = '';
+    let myId = '';
+    let isHost = false;
+    let localRoomState = null;
+
+    let selectedCardIndex = null;
+    let selectedCardName = '';
+    let selectedCardId = '';
+    let pendingTargetSocketId = null;
+    let pendingTargetName = '';
+    let pendingSecondTargetId = null;
+    let pendingSecondTargetName = '';
+
+    let pendingVictimSocketId = null;
+    let selectedTryalIdx = null;
+    let selectedCatTryalIdx = null;
+    let selectedConspiracyPickIdx = null;
+    let conspiracyPickInterval = null;
+    let selectedConfessTryalIdx = null;
+
+    let charlatanRequiredCount = 3;
+    let selectedCharlatanIds = [];
+    let selectedGravediggerTarget = null;
+    let selectedInquisitorTarget = null;
+
+    // ตัวแปรสำหรับสกิล แซมมูเอล แพร์ริส และ ทิทูบา
+    let samuelDiscardPool = [];
+    let selectedSamuelIndices = [];
+    let titubaOriginalDeck = [];
+    let titubaChosenIndices = [];
+    let titubaTimerInterval = null;
+
+    function switchScreen(id) {
+      document.querySelectorAll('.screen-phase').forEach(el => el.classList.remove('active'));
+      const target = document.getElementById(id);
+      if (target) target.classList.add('active');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    socket.on('connect', () => { myId = socket.id; });
+
+    function createRoom() {
+      const name = document.getElementById('player-name-inp').value.trim();
+      if (!name) return alert('กรุณาระบุชื่อ');
+      socket.emit('create_room', { playerName: name });
+    }
+
+    function joinRoom() {
+      const name = document.getElementById('player-name-inp').value.trim();
+      const code = document.getElementById('room-code-inp').value.trim();
+      if (!name || !code) return alert('กรุณาระบุชื่อและรหัสห้อง');
+      socket.emit('join_room', { roomCode: code, playerName: name });
+    }
+
+    function getLobbyOptionsFromDOM() {
+      return {
+        useCharacterAbilities: document.getElementById('opt-character-abilities').checked,
+        specialTryals: {
+          charlatan: document.getElementById('opt-tryal-charlatan').checked,
+          gravedigger: document.getElementById('opt-tryal-gravedigger').checked,
+          inquisitor: document.getElementById('opt-tryal-inquisitor').checked,
+          pickpocket: document.getElementById('opt-tryal-pickpocket').checked
+        }
+      };
+    }
+
+    function syncLobbyOptions() {
+      if (!isHost) return;
+      socket.emit('update_lobby_options', {
+        roomCode: currentRoomCode,
+        options: getLobbyOptionsFromDOM()
+      });
+    }
+
+    socket.on('options_updated', (opts) => {
+      document.getElementById('opt-character-abilities').checked = opts.useCharacterAbilities;
+      if (opts.specialTryals) {
+        document.getElementById('opt-tryal-charlatan').checked = opts.specialTryals.charlatan;
+        document.getElementById('opt-tryal-gravedigger').checked = opts.specialTryals.gravedigger;
+        document.getElementById('opt-tryal-inquisitor').checked = opts.specialTryals.inquisitor;
+        document.getElementById('opt-tryal-pickpocket').checked = opts.specialTryals.pickpocket;
+      }
+    });
+
+    function startCourtGame() {
+      socket.emit('start_game', {
+        roomCode: currentRoomCode,
+        options: getLobbyOptionsFromDOM()
+      });
+    }
+
+    socket.on('joined_room', ({ code, isHost: hostFlag, options }) => {
+      currentRoomCode = code;
+      isHost = hostFlag;
+      document.getElementById('lobby-login-box').classList.add('hidden');
+      document.getElementById('lobby-waiting-box').classList.remove('hidden');
+      document.getElementById('display-room-code').innerText = code;
+      
+      const optionInputs = [
+        document.getElementById('opt-character-abilities'),
+        document.getElementById('opt-tryal-charlatan'),
+        document.getElementById('opt-tryal-gravedigger'),
+        document.getElementById('opt-tryal-inquisitor'),
+        document.getElementById('opt-tryal-pickpocket')
+      ];
+
+      if (!isHost) {
+        optionInputs.forEach(inp => inp.disabled = true);
+        document.getElementById('host-only-hint').innerText = "🔒 เฉพาะหัวหน้าห้องที่ปรับแต่งได้";
+      } else {
+        optionInputs.forEach(inp => inp.disabled = false);
+        document.getElementById('host-only-hint').innerText = "👑 คุณคือหัวหน้าห้อง (ปรับแต่งได้)";
+      }
+
+      if (options) {
+        document.getElementById('opt-character-abilities').checked = options.useCharacterAbilities;
+        if (options.specialTryals) {
+          document.getElementById('opt-tryal-charlatan').checked = options.specialTryals.charlatan;
+          document.getElementById('opt-tryal-gravedigger').checked = options.specialTryals.gravedigger;
+          document.getElementById('opt-tryal-inquisitor').checked = options.specialTryals.inquisitor;
+          document.getElementById('opt-tryal-pickpocket').checked = options.specialTryals.pickpocket;
+        }
+      }
+    });
+
+    socket.on('update_room', (room) => {
+      const count = room.players.length;
+      document.getElementById('display-player-count').innerText = `${count} / 12 ผู้เล่น`;
+      const list = document.getElementById('lobby-players-list');
+      const showChar = room.options && room.options.useCharacterAbilities;
+
+      list.innerHTML = room.players.map((p, idx) => {
+        const c = PLAYER_COLORS[idx % PLAYER_COLORS.length].color;
+        return `
+        <li class="p-2.5 rounded-lg bg-black/50 border border-white/10 text-xs font-cinzel flex justify-between items-center">
+          <span class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full inline-block border border-white/40" style="background:${c}"></span>
+            ${p.name} 
+            ${showChar && p.char && p.char.th ? `<span class="text-amber-500/80">(สุ่มตัวละครเมื่อเริ่มเกม)</span>` : ''} 
+            ${p.socketId === myId ? '<b class="text-amber-400">(ท่าน)</b>' : ''}
+          </span>
+          ${p.isHost ? '<span class="text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded text-[10px]">👑 Host</span>' : ''}
+        </li>
+      `}).join('');
+
+      if (isHost) {
+        const btn = document.getElementById('btn-start-court');
+        if (count >= 3) {
+          btn.disabled = false;
+          btn.className = "w-full py-3.5 bg-gradient-to-r from-amber-700 to-rose-900 text-stone-950 font-cinzel font-black text-sm rounded-lg cursor-pointer shadow-xl";
+          btn.innerText = `⚖️ เปิดศาลพิจารณาคดี (${count} คน)`;
+        } else {
+          btn.disabled = true;
+          btn.className = "w-full py-3.5 bg-stone-950 text-stone-600 font-cinzel font-bold text-sm rounded-lg border border-stone-800 cursor-not-allowed";
+          btn.innerText = `รอสหายอีก ${3 - count} คน (ขั้นต่ำ 3 คน)`;
+        }
+      }
+    });
+
+    socket.on('deal_tryals', ({ tryals }) => {
+      switchScreen('phase-reveal');
+      const grid = document.getElementById('my-tryals-grid');
+      grid.innerHTML = tryals.map(t => {
+        const vis = getTryalVisual(t.type);
+        return `
+          <div class="h-24 rounded-xl border flex flex-col items-center justify-center p-2 font-cinzel ${vis.boxClass}">
+            <span class="text-xl">${vis.icon}</span>
+            <span class="text-[8px] mt-1 font-bold text-center leading-tight">${vis.label}</span>
+            <span class="text-[7px] opacity-80">${vis.th}</span>
+          </div>
+        `;
+      }).join('');
+    });
+
+    function openMyTryalsPeekModal() {
+      if (!localRoomState || !localRoomState.players) return;
+      const me = localRoomState.players.find(p => p && p.socketId === myId);
+      if (!me || !me.tryals) return;
+      
+      const grid = document.getElementById('peek-tryals-grid');
+      grid.innerHTML = me.tryals.map((t, idx) => {
+        const vis = getTryalVisual(t.type);
+        return `
+          <div class="h-24 rounded-xl border flex flex-col items-center justify-center p-1.5 font-cinzel ${vis.boxClass}">
+            <span class="text-xl">${vis.icon}</span>
+            <span class="text-[8px] font-bold mt-1 text-center leading-none">${vis.label}</span>
+            <span class="text-[7px] opacity-90 mt-0.5">(${vis.th})</span>
+            <span class="text-[6px] opacity-75 mt-1">${t.revealed ? '[หงายแล้ว]' : '[คว่ำอยู่]'}</span>
+          </div>
+        `;
+      }).join('');
+      document.getElementById('peek-my-tryals-modal').classList.remove('hidden');
+    }
+
+    function closeMyTryalsPeekModal() {
+      document.getElementById('peek-my-tryals-modal').classList.add('hidden');
+    }
+
+    // ------------------------------------------------------------------
+    // เปิดหน้าต่างแสดงรายละเอียดตัวละคร (เมื่อคลิกการ์ดตัวละครบนโต๊ะ)
+    // ------------------------------------------------------------------
+    function openCharacterModalBySocketId(targetSocketId, ev) {
+      if (ev) ev.stopPropagation();
+      if (!localRoomState || !localRoomState.players) return;
+      const p = localRoomState.players.find(pl => pl && pl.socketId === targetSocketId);
+      if (!p || !p.char) return;
+
+      const info = getEffectiveCharInfo(localRoomState, p);
+      document.getElementById('char-modal-owner').innerText = `ตัวละครของ: ${p.name}`;
+      document.getElementById('char-modal-name').innerText = p.char.th || p.char.name;
+      document.getElementById('char-modal-en').innerText = p.char.name || '';
+      document.getElementById('char-modal-desc').innerText = p.char.desc || '';
+
+      const marthaBox = document.getElementById('char-modal-martha-box');
+      if (p.char.id === 'martha' && info.copiedFrom && info.effectiveChar) {
+        marthaBox.innerHTML = `🔮 <b>กำลังเลียนแบบผู้เล่นทางขวา (${info.copiedFrom.name}):</b><br><span class="text-amber-200 font-bold">${info.effectiveChar.th}</span> — ${info.effectiveChar.desc}`;
+        marthaBox.classList.remove('hidden');
+      } else {
+        marthaBox.classList.add('hidden');
+      }
+
+      const chargesBox = document.getElementById('char-modal-charges');
+      const effId = info.effectiveChar ? info.effectiveChar.id : '';
+      const st = p.charState || {};
+      if (effId === 'samuel') {
+        const left = st.samuelUsesLeft !== undefined ? st.samuelUsesLeft : 2;
+        chargesBox.innerText = `♻️ จำนวนครั้งที่ใช้สกิลจั่วกองทิ้งได้: เหลือ ${left}/2 ครั้ง`;
+        chargesBox.classList.remove('hidden');
+      } else if (effId === 'tituba') {
+        const used = st.titubaUsed ? 0 : 1;
+        chargesBox.innerText = `🔮 จำนวนครั้งที่เรียงกองจั่วได้: เหลือ ${used}/1 ครั้ง`;
+        chargesBox.classList.remove('hidden');
+      } else if (effId === 'william') {
+        const used = st.phipsUsed ? 0 : 1;
+        chargesBox.innerText = `✨ จำนวนครั้งที่สารภาพฟรีได้: เหลือ ${used}/1 ครั้ง`;
+        chargesBox.classList.remove('hidden');
+      } else {
+        chargesBox.classList.add('hidden');
+      }
+
+      document.getElementById('character-info-modal').classList.remove('hidden');
+    }
+
+    function closeCharacterModal() {
+      document.getElementById('character-info-modal').classList.add('hidden');
+    }
+
+    let dawnCountdown = null;
+    socket.on('dawn_step_1_sleep', ({ duration, voiceText }) => {
+      switchScreen('phase-dawn');
+      document.getElementById('dawn-voice-subtitles').innerText = `"${voiceText}"`;
+      let s = duration;
+      document.getElementById('dawn-timer-num').innerText = s;
+      dawnCountdown = setInterval(() => { s--; if(s>=0) document.getElementById('dawn-timer-num').innerText = s; if(s<=0) clearInterval(dawnCountdown); }, 1000);
+      document.getElementById('dawn-step-content').innerHTML = `<p class="text-xs text-stone-400">ทุกคนในหมู่บ้านจงหลับตาลงอย่างสงบ</p>`;
+    });
+
+    socket.on('dawn_step_2_witches_wake', ({ duration, voiceText, isWitch, witchFriends }) => {
+      document.getElementById('dawn-voice-subtitles').innerText = `"${voiceText}"`;
+      const content = document.getElementById('dawn-step-content');
+      if (isWitch) {
+        content.innerHTML = `
+          <div class="text-2xl mb-1">🧙‍♀️</div>
+          <h3 class="text-sm font-cinzel font-bold text-rose-400">ท่านคือแม่มด! สหายแม่มด:</h3>
+          <div class="flex justify-center gap-2 mt-2">
+            ${witchFriends.map(w => `<span class="px-2.5 py-1 rounded-lg bg-black/60 border border-rose-500/40 text-rose-200 text-xs">แม่มด #${w.rank}:${w.name}</span>`).join('')}
+          </div>
+        `;
+      } else {
+        content.innerHTML = `<p class="text-xs text-stone-500">ท่านกำลังหลับใหล... มีเพียงแม่มดเท่านั้นที่สบตากัน</p>`;
+      }
+    });
+
+    socket.on('dawn_step_3_black_cat', ({ duration, voiceText, isWitch, isDecider, deciderName, players }) => {
+      document.getElementById('dawn-voice-subtitles').innerText = `"${voiceText}"`;
+      const content = document.getElementById('dawn-step-content');
+      if (isWitch) {
+        if (isDecider) {
+          content.innerHTML = `
+            <div class="text-2xl mb-1">🐈‍⬛</div>
+            <h3 class="text-xs font-cinzel text-amber-300 font-bold">ท่านคือแม่มด 1 จงเลือกวางการ์ดแมวดำ:</h3>
+            <div class="grid grid-cols-2 gap-2 max-w-sm w-full mt-2">
+              ${players.map(p => p.isMaryImmune 
+                ? `<button disabled class="p-2 bg-stone-900 border border-stone-700 rounded-lg text-xs font-cinzel text-stone-500 cursor-not-allowed" title="แมรี่ วอร์เรน ไม่ได้รับผลจากแมวดำ">🛡️ ${p.name} (Mary)</button>`
+                : `<button onclick="submitBlackCatTarget('${p.socketId}')" class="p-2 bg-black/50 hover:bg-rose-950 border border-rose-500/40 rounded-lg text-xs font-cinzel text-amber-200 cursor-pointer">${p.name}</button>`
+              ).join('')}
+            </div>
+          `;
+        } else {
+          content.innerHTML = `<h3 class="text-xs font-cinzel text-amber-300">แม่มด 1 (${deciderName}) กำลังตัดสินใจวางแมวดำ...</h3>`;
+        }
+      } else {
+        content.innerHTML = `<p class="text-xs text-stone-500">ทุกคนยังคงหลับตาอยู่...</p>`;
+      }
+    });
+
+    function submitBlackCatTarget(targetSocketId) {
+      socket.emit('witch_place_black_cat', { roomCode: currentRoomCode, targetSocketId });
+    }
+
+    socket.on('dawn_completed', () => switchScreen('phase-court'));
+
+    socket.on('court_sync', (room) => {
+      localRoomState = room;
+      if (room.phase === 'COURT') {
+        switchScreen('phase-court');
+        document.getElementById('conspiracy-cat-modal').classList.add('hidden');
+        document.getElementById('conspiracy-pick-left-modal').classList.add('hidden');
+      }
+
+      document.getElementById('hud-phase-txt').innerText = room.phase || "COURT";
+
+      const me = localRoomState.players.find(p => p && p.socketId === myId);
+
+      const witchInd = document.getElementById('hud-witch-indicator');
+      if (me && me.isWitch) {
+        witchInd.classList.remove('hidden');
+      } else {
+        witchInd.classList.add('hidden');
+      }
+
+      const deckBadge = document.getElementById('deck-counter-badge');
+      if (deckBadge && room.deckCount !== undefined) {
+        deckBadge.innerText = `สำรับ: ${room.deckCount} ใบ`;
+        deckBadge.classList.remove('hidden');
+      }
+
+      const discardBadge = document.getElementById('discard-counter-badge');
+      if (discardBadge && room.discardCount !== undefined) {
+        discardBadge.innerText = `กองทิ้ง: ${room.discardCount} ใบ`;
+        discardBadge.classList.remove('hidden');
+      }
+
+      const someoneHasCat = (room.players || []).some(p => (p.blueCards || []).some(b => b && b.id === 'black_cat'));
+      const centerCatProp = document.getElementById('center-blackcat-prop');
+      if (centerCatProp) {
+        centerCatProp.style.opacity = someoneHasCat ? '0.2' : '1';
+      }
+
+      const activeP = (room.players || []).find((p, idx) => idx === room.activePlayerIdx);
+      const isMyTurn = (activeP && activeP.socketId === myId);
+      const overLimit = (me && me.hand && me.hand.length > 12); 
+
+      document.getElementById('court-active-player-name').innerText = isMyTurn ? `เทิร์นของท่าน!` : `${activeP ? activeP.name : '-'}`;
+
+      // อัปเดตป้ายตัวละครของเรา & ปุ่มสกิลของ แซมมูเอล / ทิทูบา
+      const myCharBadge = document.getElementById('my-char-quick-badge');
+      const btnTituba = document.getElementById('btn-skill-tituba');
+      const btnSamuel = document.getElementById('btn-skill-samuel');
+      btnTituba.classList.add('hidden');
+      btnSamuel.classList.add('hidden');
+
+      if (room.options && room.options.useCharacterAbilities && me && me.char) {
+        const myEff = getEffectiveCharInfo(room, me);
+        const effId = myEff.effectiveChar ? myEff.effectiveChar.id : '';
+        myCharBadge.innerText = me.char.id === 'martha' && myEff.copiedFrom
+          ? `👤 ${me.char.th} (จำแลง: ${myEff.effectiveChar.th}) [คลิกดู]`
+          : `👤 ตัวละคร: ${me.char.th} [คลิกดู]`;
+        myCharBadge.classList.remove('hidden');
+
+        const st = me.charState || {};
+        if (isMyTurn && room.turnActionTaken !== 'PLAYED' && !overLimit && me.isAlive) {
+          if (effId === 'tituba' && !st.titubaUsed) {
+            btnTituba.classList.remove('hidden');
+          }
+          const samuelLeft = st.samuelUsesLeft !== undefined ? st.samuelUsesLeft : 2;
+          if (effId === 'samuel' && samuelLeft > 0) {
+            btnSamuel.innerText = `♻️ สกิลแซมมูเอล: จั่วกองทิ้ง (${samuelLeft}/2)`;
+            btnSamuel.classList.remove('hidden');
+          }
+        }
+      } else {
+        myCharBadge.classList.add('hidden');
+      }
+
+      const btnDraw = document.getElementById('btn-draw-two');
+      const btnFinish = document.getElementById('btn-finish-play');
+      
+      if (isMyTurn && room.turnActionTaken !== 'PLAYED' && !overLimit) {
+        btnDraw.disabled = false;
+        btnDraw.className = "px-4 py-2.5 rounded-lg bg-gradient-to-r from-amber-700 to-rose-900 border border-amber-400/50 text-stone-950 font-cinzel font-black text-xs hover:brightness-110 transition cursor-pointer shadow-lg";
+      } else {
+        btnDraw.disabled = true;
+        btnDraw.className = "px-4 py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed";
+      }
+
+      if (isMyTurn && room.turnActionTaken === 'PLAYED' && !overLimit) {
+        btnFinish.disabled = false;
+        btnFinish.className = "px-4 py-2.5 rounded-lg bg-gradient-to-r from-emerald-700 to-emerald-900 border border-emerald-400/50 text-stone-100 font-cinzel font-bold text-xs hover:brightness-110 transition cursor-pointer shadow-lg";
+      } else {
+        btnFinish.disabled = true;
+        btnFinish.className = "px-4 py-2.5 rounded-lg bg-stone-950 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed";
+      }
+
+      renderTabletopPods(room);
+      renderFloatingHand(room);
+    });
+
+    function renderTabletopPods(room) {
+      try {
+        const board = document.getElementById('court-players-board');
+        if (!board) return;
+        
+        const players = room.players || [];
+        const total = players.length;
+        if (total === 0) return;
+
+        const showChar = room.options && room.options.useCharacterAbilities;
+        const myIndex = players.findIndex(p => p && p.socketId === myId);
+        const baseIndex = myIndex !== -1 ? myIndex : 0;
+
+        board.innerHTML = players.map((p, idx) => {
+          if (!p) return '';
+          const isCurrent = (idx === room.activePlayerIdx);
+          const playerColor = PLAYER_COLORS[idx % PLAYER_COLORS.length] || { name: 'Player', color: '#555' };
+
+          const relativeIdx = (idx - baseIndex + total) % total;
+          const angleDeg = 90 + (relativeIdx * (360 / total));
+          const angleRad = angleDeg * (Math.PI / 180);
+
+          const rx = 39;
+          const ry = 36;
+          const leftPct = 50 + rx * Math.cos(angleRad);
+          const topPct = 50 + ry * Math.sin(angleRad);
+
+          const blueCardsHTML = (p.blueCards || []).map(b => {
+            if (!b) return '';
+            let bName = b.name || '';
+            let icon = '✨';
+            if (bName.includes('Black Cat')) icon = '🐈‍⬛';
+            else if (bName.includes('Piety')) icon = '🛡️';
+            else if (bName.includes('Stocks')) icon = '⛓️';
+            else if (bName.includes('Asylum')) icon = '🏥';
+            else if (bName.includes('Matchmaker')) icon = '💔';
+            
+            let cardClass = (b.id === 'stocks') ? 'green-card-tts' : 'blue-card-tts';
+            
+            return `
+              <div class="${cardClass}" title="${bName}">
+                <span class="text-xs">${icon}</span>
+                <span class="truncate w-full leading-none">${bName.split(' ')[0]}</span>
+              </div>
+            `;
+          }).join('');
+
+          const tryalsHTML = (p.tryals || []).map(t => {
+            if (!t) return '';
+            if (t.revealed) {
+              const vis = getTryalVisual(t.type);
+              return `<div class="tryal-card-revealed-tts ${vis.boxClass}" title="${vis.label} (${vis.th})">
+                        <span class="text-[5px] font-cinzel font-bold truncate w-full text-center">${vis.label}</span>
+                        <span class="text-sm">${vis.icon}</span>
+                        <span class="text-[5px] font-cinzel opacity-90">${vis.th}</span>
+                       </div>`;
+            } else {
+              return getTTS_TryalCardHTML();
+            }
+          }).join('');
+
+          const charInfo = getEffectiveCharInfo(room, p);
+          const isGeorge = showChar && charInfo.effectiveChar && charInfo.effectiveChar.id === 'george';
+          const maxRed = isGeorge ? 8 : 7;
+
+          const charName = (p.char && p.char.th) ? p.char.th : 'TOWN';
+          const subLabel = (p.char && p.char.id === 'martha' && charInfo.effectiveChar && charInfo.copiedFrom)
+            ? `(${charInfo.effectiveChar.th.split(' ')[0]})`
+            : '🔍 ดูสกิล';
+
+          return `
+            <div id="player-pod-${p.socketId}" 
+                 onclick="handlePodClick('${p.socketId}', '${p.name || ''}')" 
+                 style="left: ${leftPct}%; top: ${topPct}%; transform: translate(-50%, -50%);"
+                 class="absolute flex flex-col items-center transition-all pointer-events-auto ${!p.isAlive ? 'opacity-35 grayscale' : ''} cursor-pointer group">
+              
+              <div class="tts-player-tag mb-1" style="background-color: ${playerColor.color};">
+                <span>${p.name || 'Unknown'}</span>
+                ${isCurrent ? '<span class="text-[9px] bg-black/50 px-1.5 py-0.5 rounded animate-pulse">🟢 เทิร์น</span>' : ''}
+                <span id="pod-accuse-badge-${p.socketId}" class="bg-black/65 px-1.5 py-0.5 rounded text-[10px] font-mono border border-white/20">
+                  🩸 ${p.redPoints || 0}/${maxRed}
+                </span>
+              </div>
+
+              ${blueCardsHTML ? `<div class="flex items-center gap-1 mb-1">${blueCardsHTML}</div>` : ''}
+
+              <div class="flex items-center gap-1.5 p-1.5 rounded-lg bg-black/45 border border-white/10 shadow-2xl ${isCurrent ? 'ring-2 ring-amber-400' : ''}">
+                
+                ${showChar ? `
+                  <div class="townhall-card-tts" 
+                       onclick="openCharacterModalBySocketId('${p.socketId}', event)"
+                       title="คลิกเพื่อดูความสามารถของ ${charName}">
+                    <span class="text-[5.5px] font-cinzel font-black truncate w-full text-center leading-tight">${charName}</span>
+                    <div class="w-5 h-6 rounded-full bg-[#3d2008]/15 border border-[#754c1b]/50 flex items-center justify-center text-xs">📜</div>
+                    <span class="text-[5px] font-cinzel font-bold text-[#692018] truncate w-full text-center">${subLabel}</span>
+                  </div>
+                ` : ''}
+
+                <div class="flex items-center gap-1 pb-1 border-b-[3px]" style="border-color: ${playerColor.color};">
+                  ${tryalsHTML}
+                </div>
+
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error("Render Tabletop Error:", err);
+      }
+    }
+
+    function renderFloatingHand(room) {
+      try {
+        const me = (room.players || []).find(p => p && p.socketId === myId);
+        const handBox = document.getElementById('court-my-hand');
+        if (!handBox) return;
+        handBox.innerHTML = '';
+
+        const limitWarning = document.getElementById('hand-limit-warning');
+        const overLimit = me && me.hand && me.hand.length > 12;
+        if (overLimit) {
+          limitWarning.innerText = `⚠️ การ์ดในมือเกิน 12 ใบ (มี ${me.hand.length} ใบ) กรุณาคลิกที่การ์ดเพื่อเลือกทิ้งลงกอง ${me.hand.length - 12} ใบ`;
+          limitWarning.classList.remove('hidden');
+        } else {
+          limitWarning.classList.add('hidden');
+        }
+
+        if (me && me.hand && Array.isArray(me.hand)) {
+          me.hand.forEach((card, idx) => {
+            if (!card || !card.type || !card.name) return;
+
+            const theme = getHandCardTheme(card);
+            const cardEl = document.createElement('div');
+            cardEl.id = `hand-card-${idx}`;
+            cardEl.className = `salem-hand-card ${theme.themeClass}`;
+
+            cardEl.innerHTML = `
+              <div>
+                <div class="flex justify-between items-center text-[9.5px] font-cinzel font-bold ${theme.headerColor} tracking-wider">
+                  <span>${theme.catLabel}</span>
+                  <span class="text-xs">${theme.icon}</span>
+                </div>
+                <div class="w-full h-px ${theme.dividerColor} my-1"></div>
+                <div class="text-[11.5px] font-bold ${theme.titleColor} leading-tight truncate">${card.name}</div>
+                <div class="text-[9.5px] ${theme.descColor} leading-snug mt-1 line-clamp-2">${card.desc || ''}</div>
+              </div>
+              <div class="flex justify-end items-center mt-1">
+                <span class="${theme.pillClass}">${theme.pillText}</span>
+              </div>
+            `;
+
+            cardEl.onclick = () => {
+              if (overLimit) {
+                socket.emit('action_discard_card', { roomCode: currentRoomCode, cardIdx: idx });
+              } else {
+                handleCardClickFromHand(idx, card.name, card.id);
+              }
+            };
+            
+            handBox.appendChild(cardEl);
+          });
+        }
+      } catch (err) {
+        console.error("Render Hand Error:", err);
+      }
+    }
+
+    function handleCardClickFromHand(cardIdx, cardName, cardId) {
+      const activeP = localRoomState ? localRoomState.players[localRoomState.activePlayerIdx] : null;
+      if (!activeP || activeP.socketId !== myId) {
+        alert("ยังไม่ถึงเทิร์นของท่าน!");
+        return;
+      }
+      selectCardToPlay(cardIdx, cardName, cardId);
+    }
+
+    function selectCardToPlay(cardIdx, cardName, cardId) {
+      selectedCardIndex = cardIdx;
+      selectedCardName = cardName;
+      selectedCardId = cardId || '';
+      pendingTargetSocketId = null;
+      pendingSecondTargetId = null;
+
+      document.querySelectorAll('.salem-hand-card').forEach(el => el.classList.remove('selected-salem-card'));
+      const cardEl = document.getElementById(`hand-card-${cardIdx}`);
+      if (cardEl) cardEl.classList.add('selected-salem-card');
+
+      const indicator = document.getElementById('target-mode-indicator');
+      if (indicator) {
+        if (cardName.includes('Scapegoat') || cardName.includes('แพะรับบาป')) {
+          indicator.innerText = `🎯 [แพะรับบาป]: ขั้นตอนที่ 1 คลิกเลือก "คนที่จะถูกย้ายการ์ดออก"`;
+        } else if (cardName.includes('Robbery') || cardName.includes('ปล้น')) {
+          indicator.innerText = `🎯 [ปล้น]: ขั้นตอนที่ 1 คลิกเลือก "คนที่จะถูกขโมยการ์ด"`;
+        } else {
+          indicator.innerText = `🎯 กำลังจะใช้ [${cardName}] คลิกเลือกผู้เล่นรอบโต๊ะ`;
+        }
+        indicator.classList.remove('hidden');
+      }
+
+      localRoomState.players.forEach(p => {
+        const pod = document.getElementById(`player-pod-${p.socketId}`);
+        if (pod) {
+          if (p.socketId !== myId && p.isAlive) {
+            pod.classList.add('target-highlight');
+          } else {
+            pod.classList.remove('target-highlight');
+          }
+        }
+      });
+    }
+
+    function handlePodClick(targetSocketId, targetName) {
+      if (selectedCardIndex === null) {
+        alert("กรุณาคลิกเลือกการ์ดในมือก่อน แล้วค่อยคลิกเลือกผู้เล่นเป้าหมายบนโต๊ะ (หากต้องการดูสกิลตัวละคร ให้คลิกที่การ์ดตัวละครสีทองข้างไพ่)");
+        return;
+      }
+      if (targetSocketId === myId) {
+        alert("ตามกฎข้อที่ 1 แห่งเซเลม: ห้ามเล่นการ์ดใส่ตนเองเด็ดขาด!");
+        return;
+      }
+
+      const isTwoStepCard = selectedCardName.includes('Scapegoat') || selectedCardName.includes('แพะรับบาป') || selectedCardName.includes('Robbery') || selectedCardName.includes('ปล้น');
+
+      if (isTwoStepCard) {
+        if (!pendingTargetSocketId) {
+          pendingTargetSocketId = targetSocketId;
+          pendingTargetName = targetName;
+          const indicator = document.getElementById('target-mode-indicator');
+          if (indicator) {
+            indicator.innerText = `🎯 เลือก (${targetName}) แล้ว! ต่อไปคลิกเลือก "คนที่จะได้รับของ"`;
+          }
+          return;
+        } else {
+          if (targetSocketId === pendingTargetSocketId) {
+            alert("ห้ามเลือกคนรับเป็นคนเดียวกับคนส่ง!");
+            return;
+          }
+          pendingSecondTargetId = targetSocketId;
+          pendingSecondTargetName = targetName;
+
+          const descEl = document.getElementById('confirm-modal-desc');
+          if (descEl) {
+            descEl.innerHTML = `ท่านต้องการร่ายการ์ด <b class="text-amber-400">[${selectedCardName}]</b> <br>ย้ายการ์ดจาก <b class="text-rose-400">[${pendingTargetName}]</b> ไปให้ <b class="text-emerald-400">[${pendingSecondTargetName}]</b> ใช่หรือไม่?`;
+          }
+          document.getElementById('confirm-normal-buttons').classList.remove('hidden');
+          document.getElementById('confirm-will-griggs-buttons').classList.add('hidden');
+          document.getElementById('confirm-action-modal').classList.remove('hidden');
+          return;
+        }
+      }
+
+      pendingTargetSocketId = targetSocketId;
+      pendingTargetName = targetName;
+
+      // ตรวจสอบว่าผู้เล่นคือ วิลล์ กริกส์ (หรือมาร์ธาที่จำแลงเป็นวิลล์ กริกส์) และกำลังเล่นการ์ด Alibi หรือไม่
+      const me = localRoomState ? localRoomState.players.find(p => p && p.socketId === myId) : null;
+      const myEff = getEffectiveCharInfo(localRoomState, me);
+      const isWillGriggs = myEff.effectiveChar && myEff.effectiveChar.id === 'will';
+      const isAlibiCard = selectedCardId === 'alibi' || selectedCardName.includes('Alibi');
+
+      const descEl = document.getElementById('confirm-modal-desc');
+      if (isWillGriggs && isAlibiCard) {
+        descEl.innerHTML = `ท่านมีสกิลของ <b class="text-amber-300">วิลล์ กริกส์ (Will Griggs)</b>!<br>ต้องการใช้การ์ด <b class="text-amber-400">[${selectedCardName}]</b> ใส่ <b class="text-rose-400">[${targetName}]</b> ในรูปแบบใด?`;
+        document.getElementById('confirm-normal-buttons').classList.add('hidden');
+        document.getElementById('confirm-will-griggs-buttons').classList.remove('hidden');
+      } else {
+        descEl.innerHTML = `ท่านต้องการร่ายการ์ด <b class="text-amber-400">[${selectedCardName}]</b> <br>วางลงหน้า <b class="text-rose-400">[${targetName}]</b> ใช่หรือไม่?`;
+        document.getElementById('confirm-normal-buttons').classList.remove('hidden');
+        document.getElementById('confirm-will-griggs-buttons').classList.add('hidden');
+      }
+
+      document.getElementById('confirm-action-modal').classList.remove('hidden');
+    }
+
+    function executeConfirmedAction(alibiMode) {
+      document.getElementById('confirm-action-modal').classList.add('hidden');
+      if (selectedCardIndex !== null && pendingTargetSocketId !== null) {
+        socket.emit('action_play_card', {
+          roomCode: currentRoomCode,
+          cardIdx: selectedCardIndex,
+          targetSocketId: pendingTargetSocketId,
+          extraTargetId: pendingSecondTargetId,
+          alibiMode: alibiMode || 'NORMAL'
+        });
+      }
+      resetCardSelection();
+    }
+
+    function cancelPendingAction() {
+      document.getElementById('confirm-action-modal').classList.add('hidden');
+      resetCardSelection();
+    }
+
+    function resetCardSelection() {
+      selectedCardIndex = null;
+      selectedCardName = '';
+      selectedCardId = '';
+      pendingTargetSocketId = null;
+      pendingTargetName = '';
+      pendingSecondTargetId = null;
+      pendingSecondTargetName = '';
+
+      const indicator = document.getElementById('target-mode-indicator');
+      if (indicator) indicator.classList.add('hidden');
+
+      document.querySelectorAll('.target-highlight').forEach(el => el.classList.remove('target-highlight'));
+      document.querySelectorAll('.salem-hand-card').forEach(el => el.classList.remove('selected-salem-card'));
+    }
+
+    function actDrawTwo() {
+      if (!currentRoomCode || !localRoomState) return;
+      const activeP = localRoomState.players[localRoomState.activePlayerIdx];
+      if (!activeP || activeP.socketId !== myId) {
+        alert("ยังไม่ถึงเทิร์นของท่าน!");
+        return;
+      }
+      if (localRoomState.turnActionTaken === 'PLAYED') {
+        alert("ท่านเลือกเล่นการ์ดแล้วในเทิร์นนี้ จึงไม่สามารถจั่วได้");
+        return;
+      }
+      socket.emit('action_draw_two', { roomCode: currentRoomCode });
+    }
+
+    function actFinishTurn() { 
+      if (!currentRoomCode || !localRoomState) return;
+      const activeP = localRoomState.players[localRoomState.activePlayerIdx];
+      if (!activeP || activeP.socketId !== myId) {
+        alert("ยังไม่ถึงเทิร์นของท่าน!");
+        return;
+      }
+      socket.emit('action_finish_turn', { roomCode: currentRoomCode }); 
+    }
+
+    // ------------------------------------------------------------------
+    // สกิล แซมมูเอล แพร์ริส (เลือกหยิบ 2 ใบจากกองทิ้ง)
+    // ------------------------------------------------------------------
+    function requestSamuelSkill() {
+      socket.emit('request_samuel_discard', { roomCode: currentRoomCode });
+    }
+
+    socket.on('prompt_samuel_discard_pick', ({ discardCards }) => {
+      samuelDiscardPool = discardCards || [];
+      selectedSamuelIndices = [];
+      renderSamuelDiscardGrid();
+      document.getElementById('samuel-discard-modal').classList.remove('hidden');
+    });
+
+    function renderSamuelDiscardGrid() {
+      const grid = document.getElementById('samuel-discard-grid');
+      grid.innerHTML = samuelDiscardPool.map((c, idx) => {
+        const theme = getHandCardTheme(c);
+        const isSelected = selectedSamuelIndices.includes(idx);
+        return `
+          <div onclick="toggleSamuelCard(${idx})" 
+               class="salem-hand-card ${theme.themeClass} ${isSelected ? 'selected-salem-card' : ''}">
+            <div>
+              <div class="flex justify-between items-center text-[9.5px] font-cinzel font-bold ${theme.headerColor}">
+                <span>${theme.catLabel}</span><span>${theme.icon}</span>
+              </div>
+              <div class="w-full h-px ${theme.dividerColor} my-1"></div>
+              <div class="text-[11px] font-bold ${theme.titleColor} truncate">${c.name}</div>
+              <div class="text-[9px] ${theme.descColor} mt-1 line-clamp-2">${c.desc || ''}</div>
+            </div>
+            <div class="flex justify-end items-center mt-1">
+              <span class="${theme.pillClass}">${theme.pillText}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const btn = document.getElementById('btn-confirm-samuel');
+      if (selectedSamuelIndices.length === 2) {
+        btn.disabled = false;
+        btn.className = "py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-amber-600 text-stone-950 text-xs font-cinzel font-black cursor-pointer shadow-xl";
+        btn.innerText = "✓ ยืนยันหยิบ 2 ใบนี้ขึ้นมือ (จบเทิร์น)";
+      } else {
+        btn.disabled = true;
+        btn.className = "py-2.5 rounded-lg bg-stone-950 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed";
+        btn.innerText = `เลือกการ์ดอีก ${2 - selectedSamuelIndices.length} ใบ`;
+      }
+    }
+
+    function toggleSamuelCard(idx) {
+      const pos = selectedSamuelIndices.indexOf(idx);
+      if (pos !== -1) {
+        selectedSamuelIndices.splice(pos, 1);
+      } else {
+        if (selectedSamuelIndices.length >= 2) return alert("เลือกหยิบได้สูงสุด 2 ใบครับ");
+        selectedSamuelIndices.push(idx);
+      }
+      renderSamuelDiscardGrid();
+    }
+
+    function confirmSamuelPick() {
+      if (selectedSamuelIndices.length !== 2) return;
+      socket.emit('submit_samuel_discard_pick', {
+        roomCode: currentRoomCode,
+        pickedIndices: selectedSamuelIndices
+      });
+      document.getElementById('samuel-discard-modal').classList.add('hidden');
+    }
+
+    function closeSamuelModal() {
+      document.getElementById('samuel-discard-modal').classList.add('hidden');
+    }
+
+    // ------------------------------------------------------------------
+    // สกิล ทิทูบา (จัดเรียงลำดับการ์ดในกองจั่วภายใน 60 วินาที)
+    // ------------------------------------------------------------------
+    function requestTitubaSkill() {
+      socket.emit('request_tituba_deck', { roomCode: currentRoomCode });
+    }
+
+    socket.on('prompt_tituba_reorder', ({ deckCards, duration }) => {
+      titubaOriginalDeck = deckCards || [];
+      titubaChosenIndices = [];
+
+      let s = duration || 60;
+      const timerEl = document.getElementById('tituba-timer-num');
+      timerEl.innerText = s;
+      clearInterval(titubaTimerInterval);
+      titubaTimerInterval = setInterval(() => {
+        s--;
+        if (s >= 0) timerEl.innerText = s;
+        if (s <= 0) {
+          clearInterval(titubaTimerInterval);
+          submitTitubaDeckOrder();
+        }
+      }, 1000);
+
+      renderTitubaModalLists();
+      document.getElementById('tituba-reorder-modal').classList.remove('hidden');
+    });
+
+    function renderTitubaModalLists() {
+      const topList = document.getElementById('tituba-chosen-top-list');
+      const poolList = document.getElementById('tituba-remaining-pool');
+
+      if (titubaChosenIndices.length === 0) {
+        topList.innerHTML = `<span class="text-xs text-stone-500 italic px-2">ยังไม่ได้เลือกการ์ดใบบนสุด (คลิกการ์ดจากด้านล่างเพื่อนำมาเรียงเป็นใบที่ 1, 2, 3...)</span>`;
+      } else {
+        topList.innerHTML = titubaChosenIndices.map((origIdx, orderPos) => {
+          const c = titubaOriginalDeck[origIdx];
+          if (!c) return '';
+          const isBlack = c.type === 'BLACK';
+          return `
+            <div onclick="removeTitubaTopCard(${orderPos})" 
+                 class="px-2.5 py-1.5 rounded-lg border text-xs font-cinzel cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                   isBlack ? 'bg-stone-950 border-rose-500 text-rose-300 font-bold' : 'bg-amber-950/80 border-amber-400 text-amber-100'
+                 }">
+              <span class="px-1.5 py-0.5 rounded bg-black/60 text-amber-300 font-mono text-[10px]">#${orderPos + 1}</span>
+              <span>${c.name.split(' ')[0]}</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      poolList.innerHTML = titubaOriginalDeck.map((c, origIdx) => {
+        if (titubaChosenIndices.includes(origIdx)) return '';
+        const isBlack = c.type === 'BLACK';
+        return `
+          <button onclick="addTitubaTopCard(${origIdx})" 
+                  class="p-2 rounded-lg border text-left text-xs font-cinzel flex items-center justify-between cursor-pointer hover:scale-[1.02] transition ${
+                    isBlack ? 'bg-rose-950/70 border-rose-500 text-rose-200 font-bold' : 'bg-stone-900/90 border-white/10 text-stone-200 hover:border-amber-400'
+                  }">
+            <span class="truncate">${c.name}</span>
+            <span class="text-[10px] opacity-65 ml-1">+ดึงขึ้นบน</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function addTitubaTopCard(origIdx) {
+      if (!titubaChosenIndices.includes(origIdx)) {
+        titubaChosenIndices.push(origIdx);
+        renderTitubaModalLists();
+      }
+    }
+
+    function removeTitubaTopCard(orderPos) {
+      titubaChosenIndices.splice(orderPos, 1);
+      renderTitubaModalLists();
+    }
+
+    function resetTitubaSelection() {
+      titubaChosenIndices = [];
+      renderTitubaModalLists();
+    }
+
+    function submitTitubaDeckOrder() {
+      clearInterval(titubaTimerInterval);
+      document.getElementById('tituba-reorder-modal').classList.add('hidden');
+      socket.emit('submit_tituba_reorder', {
+        roomCode: currentRoomCode,
+        topChosenOriginalIndices: titubaChosenIndices
+      });
+    }
+
+    socket.on('animate_card_play', ({ sourceId, targetId, card }) => {
+      const targetEl = document.getElementById(`player-pod-${targetId}`);
+      if (!targetEl || !card) return;
+
+      const targetRect = targetEl.getBoundingClientRect();
+      const endX = targetRect.left + targetRect.width / 2;
+      const endY = targetRect.top + targetRect.height / 2;
+
+      let startX = window.innerWidth / 2;
+      let startY = window.innerHeight;
+
+      if (sourceId === myId) {
+        const handBox = document.getElementById('court-my-hand');
+        if (handBox) {
+          const rect = handBox.getBoundingClientRect();
+          startX = rect.left + rect.width / 2;
+          startY = rect.top + rect.height / 2;
+        }
+      } else {
+        const sourceEl = document.getElementById(`player-pod-${sourceId}`);
+        if (sourceEl) {
+          const rect = sourceEl.getBoundingClientRect();
+          startX = rect.left + rect.width / 2;
+          startY = rect.top + rect.height / 2;
+        }
+      }
+
+      const theme = getHandCardTheme(card);
+      const animCard = document.createElement('div');
+      animCard.className = `salem-hand-card ${theme.themeClass} fixed shadow-2xl pointer-events-none z-[9999]`;
+
+      animCard.innerHTML = `
+        <div>
+          <div class="flex justify-between items-center text-[10px] font-cinzel font-bold ${theme.headerColor} tracking-wider">
+            <span>${theme.catLabel}</span><span class="text-xs">${theme.icon}</span>
+          </div>
+          <div class="w-full h-px ${theme.dividerColor} my-1"></div>
+          <div class="text-[12px] font-bold ${theme.titleColor} leading-tight truncate">${card.name}</div>
+        </div>
+        <div class="flex justify-end items-center mt-1"><span class="${theme.pillClass}">${theme.pillText}</span></div>
+      `;
+
+      animCard.style.left = `${startX - 68}px`;
+      animCard.style.top = `${startY - 60}px`;
+      animCard.style.transform = `scale(1.05)`;
+      animCard.style.transition = `all 0.55s cubic-bezier(0.2, 0.8, 0.2, 1)`;
+
+      document.body.appendChild(animCard);
+      void animCard.offsetWidth;
+
+      const randomAngle = Math.floor(Math.random() * 24 - 12);
+      animCard.style.left = `${endX - 68}px`;
+      animCard.style.top = `${endY - 60}px`;
+      animCard.style.transform = `scale(0.58) rotate(${randomAngle}deg)`;
+
+      setTimeout(() => {
+        animCard.style.transition = `all 0.3s ease`;
+        animCard.style.opacity = '0';
+        animCard.style.transform = `scale(0.35) rotate(${randomAngle}deg)`;
+      }, 550);
+
+      setTimeout(() => {
+        if (animCard.parentNode) animCard.remove();
+      }, 880);
+    });
+
+    socket.on('prompt_curse_select', ({ targetName, blueCards }) => {
+      document.getElementById('curse-select-desc').innerHTML = `เป้าหมาย <b>[${targetName}]</b> มีการ์ดสีฟ้าเกิน 1 ใบ กรุณาเลือกการ์ดที่ต้องการล้าง:`;
+      const container = document.getElementById('curse-target-cards');
+      
+      container.innerHTML = blueCards.map((b, idx) => {
+        let icon = '✨';
+        if(b.id === 'black_cat') icon = '🐈‍⬛';
+        if(b.id === 'stocks') icon = '⛓️';
+        if(b.id === 'asylum') icon = '🏥';
+        if(b.id === 'matchmaker') icon = '💔';
+        if(b.id === 'piety') icon = '🛡️';
+        
+        return `
+          <div onclick="confirmCurseSelection(${idx}, '${b.name}')" class="cursor-pointer hover:scale-110 transition bg-blue-950/70 p-2 rounded-xl border border-blue-400 text-blue-100 text-xs flex flex-col items-center justify-center w-20 h-24 shadow-lg text-center">
+            <span class="text-xl mb-1">${icon}</span>
+            <span class="font-bold font-cinzel leading-tight">${b.name}</span>
+          </div>
+        `;
+      }).join('');
+      
+      document.getElementById('curse-select-modal').classList.remove('hidden');
+    });
+
+    function confirmCurseSelection(blueCardIdx, cardName) {
+      if(confirm(`ยืนยันล้างคำสาปการ์ด [${cardName}] ของเป้าหมายทิ้งใช่หรือไม่?`)) {
+        socket.emit('action_resolve_curse', { roomCode: currentRoomCode, blueCardIdx });
+        document.getElementById('curse-select-modal').classList.add('hidden');
+        resetCardSelection();
+      }
+    }
+
+    function cancelCurseAction() {
+      socket.emit('action_cancel_curse', { roomCode: currentRoomCode });
+      document.getElementById('curse-select-modal').classList.add('hidden');
+      resetCardSelection();
+    }
+
+    socket.on('prompt_pick_victim_tryal', ({ targetSocketId, targetName, tryals }) => {
+      pendingVictimSocketId = targetSocketId;
+      selectedTryalIdx = null;
+      document.getElementById('pick-tryal-desc').innerHTML = `ข้อกล่าวหาของ <b class="text-rose-400">[${targetName}]</b> ครบเกณฑ์! เลือกการ์ดไต่สวน 1 ใบ:`;
+      const container = document.getElementById('victim-tryals-container');
+      container.innerHTML = tryals.map((t, idx) => t.revealed 
+        ? `<div class="h-16 w-11 rounded bg-black/50 border border-white/10 flex items-center justify-center text-[9px] text-stone-500">เปิดแล้ว</div>` 
+        : `<div id="victim-tryal-${idx}" onclick="selectVictimTryal(${idx})" class="cursor-pointer hover:scale-105 transition">${getTTS_TryalCardHTML()}</div>`
+      ).join('');
+      document.getElementById('pick-tryal-modal').classList.remove('hidden');
+    });
+
+    function selectVictimTryal(idx) {
+      selectedTryalIdx = idx;
+      document.querySelectorAll('#victim-tryals-container > div').forEach(el => el.classList.remove('ring-2', 'ring-amber-400'));
+      const el = document.getElementById(`victim-tryal-${idx}`);
+      if (el) el.classList.add('ring-2', 'ring-amber-400');
+
+      const btn = document.getElementById('btn-confirm-tryal');
+      btn.disabled = false;
+      btn.className = "w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-900 text-stone-950 text-xs font-cinzel font-black cursor-pointer shadow-xl";
+      btn.innerText = `✓ ยืนยันเปิดการ์ดใบที่ ${idx + 1}`;
+    }
+
+    function confirmVictimTryalSelection() {
+      if (selectedTryalIdx === null || !pendingVictimSocketId) return;
+      socket.emit('submit_chosen_victim_tryal', { roomCode: currentRoomCode, targetSocketId: pendingVictimSocketId, tryalIndex: selectedTryalIdx });
+      document.getElementById('pick-tryal-modal').classList.add('hidden');
+    }
+
+    socket.on('prompt_charlatan_select', ({ requiredCount, players }) => {
+      charlatanRequiredCount = requiredCount || 3;
+      selectedCharlatanIds = [];
+      document.getElementById('charlatan-req-count').innerText = charlatanRequiredCount;
+
+      const grid = document.getElementById('charlatan-players-grid');
+      grid.innerHTML = players.map(p => `
+        <button id="charlatan-p-${p.socketId}" onclick="toggleCharlatanPlayer('${p.socketId}')" 
+                class="p-2.5 rounded-lg bg-black/50 border border-white/10 text-amber-100 text-xs font-cinzel flex items-center justify-between hover:bg-purple-950/60 cursor-pointer transition">
+          <span>${p.name} ${p.socketId === myId ? '<b class="text-amber-400">(ท่าน)</b>' : ''}</span>
+          <span class="text-[10px] opacity-60">🎴</span>
+        </button>
+      `).join('');
+
+      updateCharlatanConfirmButton();
+      document.getElementById('charlatan-modal').classList.remove('hidden');
+    });
+
+    function toggleCharlatanPlayer(socketId) {
+      const idx = selectedCharlatanIds.indexOf(socketId);
+      const btn = document.getElementById(`charlatan-p-${socketId}`);
+      if (idx !== -1) {
+        selectedCharlatanIds.splice(idx, 1);
+        if (btn) btn.classList.remove('ring-2', 'ring-purple-400', 'bg-purple-950/80');
+      } else {
+        if (selectedCharlatanIds.length >= charlatanRequiredCount) {
+          return alert(`เลือกได้สูงสุด ${charlatanRequiredCount} คนเท่านั้น`);
+        }
+        selectedCharlatanIds.push(socketId);
+        if (btn) btn.classList.add('ring-2', 'ring-purple-400', 'bg-purple-950/80');
+      }
+      updateCharlatanConfirmButton();
+    }
+
+    function updateCharlatanConfirmButton() {
+      const btn = document.getElementById('btn-confirm-charlatan');
+      if (selectedCharlatanIds.length === charlatanRequiredCount) {
+        btn.disabled = false;
+        btn.className = "w-full py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-amber-600 text-stone-950 text-xs font-cinzel font-black cursor-pointer shadow-xl";
+        btn.innerText = `✓ ยืนยันสับไพ่ของผู้เล่น ${charlatanRequiredCount} คน`;
+      } else {
+        btn.disabled = true;
+        btn.className = "w-full py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed";
+        btn.innerText = `เลือกผู้เล่นอีก ${charlatanRequiredCount - selectedCharlatanIds.length} คน`;
+      }
+    }
+
+    function confirmCharlatanSelection() {
+      if (selectedCharlatanIds.length !== charlatanRequiredCount) return;
+      socket.emit('submit_charlatan_targets', {
+        roomCode: currentRoomCode,
+        targetSocketIds: selectedCharlatanIds
+      });
+      document.getElementById('charlatan-modal').classList.add('hidden');
+    }
+
+    socket.on('prompt_gravedigger_select', ({ players }) => {
+      selectedGravediggerTarget = null;
+      const list = document.getElementById('gravedigger-players-list');
+
+      list.innerHTML = players.map(p => {
+        const cardsHTML = p.tryals.map(t => {
+          if (t.revealed && t.type !== 'WITCH') {
+            const vis = getTryalVisual(t.type);
+            return `
+              <div id="gd-card-${p.socketId}-${t.index}" 
+                   onclick="selectGravediggerCard('${p.socketId}', '${p.name}', ${t.index})"
+                   class="h-16 w-12 rounded-lg border flex flex-col items-center justify-center p-1 cursor-pointer hover:scale-105 transition ${vis.boxClass}">
+                <span class="text-sm">${vis.icon}</span>
+                <span class="text-[6px] font-bold text-center leading-tight mt-0.5">${vis.label}</span>
+                <span class="text-[5.5px] opacity-80 mt-0.5">ใบที่ ${t.index + 1}</span>
+              </div>
+            `;
+          } else {
+            return `
+              <div class="h-16 w-12 rounded-lg bg-black/40 border border-white/5 flex flex-col items-center justify-center opacity-35 cursor-not-allowed">
+                <span class="text-[7px] text-stone-500 font-cinzel">คว่ำอยู่</span>
+              </div>
+            `;
+          }
+        }).join('');
+
+        return `
+          <div class="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+            <div class="flex justify-between items-center text-xs font-cinzel">
+              <span class="font-bold text-amber-200">${p.name}</span>
+              <span class="px-2 py-0.5 rounded text-[10px] ${p.isAlive ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300 font-bold animate-pulse'}">
+                ${p.isAlive ? '💗 รอดชีวิต' : '⚰️ เสียชีวิต (คว่ำไพ่เพื่อชุบชีวิต!)'}
+              </span>
+            </div>
+            <div class="flex gap-2 justify-center">${cardsHTML}</div>
+          </div>
+        `;
+      }).join('');
+
+      const btn = document.getElementById('btn-confirm-gravedigger');
+      btn.disabled = true;
+      btn.className = "w-full py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed";
+      btn.innerText = "เลือกการ์ดที่หงายอยู่ของผู้เล่นอื่น 1 ใบ";
+
+      document.getElementById('gravedigger-modal').classList.remove('hidden');
+    });
+
+    function selectGravediggerCard(targetSocketId, targetName, tryalIndex) {
+      selectedGravediggerTarget = { targetSocketId, targetName, tryalIndex };
+      document.querySelectorAll('[id^="gd-card-"]').forEach(el => el.classList.remove('ring-2', 'ring-amber-400', 'scale-105'));
+      const el = document.getElementById(`gd-card-${targetSocketId}-${tryalIndex}`);
+      if (el) el.classList.add('ring-2', 'ring-amber-400', 'scale-105');
+
+      const btn = document.getElementById('btn-confirm-gravedigger');
+      btn.disabled = false;
+      btn.className = "w-full py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-amber-600 text-stone-950 text-xs font-cinzel font-black cursor-pointer shadow-xl";
+      btn.innerText = `✓ ยืนยันคว่ำการ์ดใบที่ ${tryalIndex + 1} ของ [${targetName}]`;
+    }
+
+    function confirmGravediggerSelection() {
+      if (!selectedGravediggerTarget) return;
+      socket.emit('submit_gravedigger_target', {
+        roomCode: currentRoomCode,
+        targetSocketId: selectedGravediggerTarget.targetSocketId,
+        tryalIndex: selectedGravediggerTarget.tryalIndex
+      });
+      document.getElementById('gravedigger-modal').classList.add('hidden');
+    }
+
+    socket.on('prompt_inquisitor_select', ({ players }) => {
+      selectedInquisitorTarget = null;
+      const list = document.getElementById('inquisitor-players-list');
+
+      list.innerHTML = players.map(p => {
+        const cardsHTML = p.tryals.map(t => {
+          if (t.revealed) {
+            return `
+              <div class="h-16 w-11 rounded bg-black/50 border border-white/10 flex flex-col items-center justify-center opacity-35 cursor-not-allowed">
+                <span class="text-[7px] text-stone-400 font-cinzel">${t.type}</span>
+                <span class="text-[6px] text-stone-500">[เปิดแล้ว]</span>
+              </div>
+            `;
+          } else {
+            return `
+              <div id="inq-card-${p.socketId}-${t.index}" 
+                   onclick="selectInquisitorCard('${p.socketId}', '${p.name}', ${t.index})"
+                   class="cursor-pointer hover:scale-105 transition flex flex-col items-center">
+                ${getTTS_TryalCardHTML()}
+                <span class="text-[8px] text-amber-300 mt-0.5 font-cinzel">ใบที่ ${t.index + 1}</span>
+              </div>
+            `;
+          }
+        }).join('');
+
+        return `
+          <div class="p-3 rounded-xl bg-black/50 border border-white/10 space-y-2">
+            <div class="text-xs font-cinzel font-bold text-amber-200">${p.name}</div>
+            <div class="flex gap-2 justify-center">${cardsHTML}</div>
+          </div>
+        `;
+      }).join('');
+
+      const btn = document.getElementById('btn-confirm-inquisitor');
+      btn.disabled = true;
+      btn.className = "w-full py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed";
+      btn.innerText = "เลือกการ์ดที่คว่ำอยู่ของผู้เล่นอื่น 1 ใบ";
+
+      document.getElementById('inquisitor-modal').classList.remove('hidden');
+    });
+
+    function selectInquisitorCard(targetSocketId, targetName, tryalIndex) {
+      selectedInquisitorTarget = { targetSocketId, targetName, tryalIndex };
+      document.querySelectorAll('[id^="inq-card-"]').forEach(el => el.classList.remove('ring-2', 'ring-sky-400', 'scale-105'));
+      const el = document.getElementById(`inq-card-${targetSocketId}-${tryalIndex}`);
+      if (el) el.classList.add('ring-2', 'ring-sky-400', 'scale-105');
+
+      const btn = document.getElementById('btn-confirm-inquisitor');
+      btn.disabled = false;
+      btn.className = "w-full py-2.5 rounded-lg bg-gradient-to-r from-sky-500 to-amber-600 text-stone-950 text-xs font-cinzel font-black cursor-pointer shadow-xl";
+      btn.innerText = `✓ ยืนยันสั่งเปิดการ์ดใบที่ ${tryalIndex + 1} ของ [${targetName}]`;
+    }
+
+    function confirmInquisitorSelection() {
+      if (!selectedInquisitorTarget) return;
+      socket.emit('submit_inquisitor_target', {
+        roomCode: currentRoomCode,
+        targetSocketId: selectedInquisitorTarget.targetSocketId,
+        tryalIndex: selectedInquisitorTarget.tryalIndex
+      });
+      document.getElementById('inquisitor-modal').classList.add('hidden');
+    }
+
+    socket.on('prompt_conspiracy_cat_reveal', ({ tryals }) => {
+      selectedCatTryalIdx = null;
+      const container = document.getElementById('cat-tryals-container');
+      container.innerHTML = tryals.map((t, idx) => t.revealed 
+        ? `<div class="h-16 w-11 rounded bg-black/50 border border-white/10 flex items-center justify-center text-[9px] text-stone-500">เปิดแล้ว</div>` 
+        : `<div id="cat-tryal-${idx}" onclick="selectCatTryal(${idx})" class="cursor-pointer hover:scale-105 transition">${getTTS_TryalCardHTML()}</div>`
+      ).join('');
+      document.getElementById('conspiracy-cat-modal').classList.remove('hidden');
+    });
+
+    function selectCatTryal(idx) {
+      selectedCatTryalIdx = idx;
+      document.querySelectorAll('#cat-tryals-container > div').forEach(el => el.classList.remove('ring-2', 'ring-amber-400'));
+      const el = document.getElementById(`cat-tryal-${idx}`);
+      if (el) el.classList.add('ring-2', 'ring-amber-400');
+
+      const btn = document.getElementById('btn-confirm-cat-tryal');
+      btn.disabled = false;
+      btn.className = "w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-900 text-stone-950 text-xs font-cinzel font-black cursor-pointer shadow-xl";
+      btn.innerText = `✓ ยืนยันเปิดการ์ดใบที่ ${idx + 1}`;
+    }
+
+    function confirmCatTryalReveal() {
+      if (selectedCatTryalIdx === null) return;
+      socket.emit('conspiracy_cat_reveal_submit', { roomCode: currentRoomCode, tryalIndex: selectedCatTryalIdx });
+      document.getElementById('conspiracy-cat-modal').classList.add('hidden');
+    }
+
+    socket.on('prompt_conspiracy_pick_left', ({ duration, leftPlayerName, tryals }) => {
+      document.getElementById('conspiracy-cat-modal').classList.add('hidden');
+      selectedConspiracyPickIdx = null;
+
+      let s = duration || 15;
+      const timerEl = document.getElementById('conspiracy-pick-timer');
+      timerEl.innerText = s;
+      clearInterval(conspiracyPickInterval);
+      conspiracyPickInterval = setInterval(() => {
+        s--;
+        if (s >= 0) timerEl.innerText = s;
+        if (s <= 0) clearInterval(conspiracyPickInterval);
+      }, 1000);
+
+      document.getElementById('conspiracy-pick-left-desc').innerHTML = 
+        `จงเลือกหยิบการ์ดไต่สวนที่ยังคว่ำอยู่ 1 ใบจากผู้เล่นทางซ้ายมือ <b class="text-amber-400">[${leftPlayerName}]</b>:`;
+
+      const container = document.getElementById('conspiracy-left-tryals-container');
+      container.innerHTML = tryals.map((t, idx) => {
+        if (t.revealed) {
+          return `
+            <div class="flex flex-col items-center opacity-40 cursor-not-allowed">
+              <div class="h-[66px] w-[44px] rounded bg-black/60 border border-white/15 flex flex-col items-center justify-center text-[8px] text-stone-400 font-cinzel">
+                <span>${t.type || 'เปิดแล้ว'}</span>
+                <span class="text-[7px] text-stone-500 mt-1">[หงายอยู่]</span>
+              </div>
+              <span class="text-[9px] text-stone-600 mt-1 font-cinzel">ใบที่ ${idx + 1}</span>
+            </div>
+          `;
+        } else {
+          return `
+            <div class="flex flex-col items-center cursor-pointer group" onclick="selectConspiracyLeftCard(${idx})">
+              <div id="conspiracy-left-card-${idx}" class="rounded transition transform group-hover:scale-105">
+                ${getTTS_TryalCardHTML()}
+              </div>
+              <span class="text-[9px] text-amber-300/80 mt-1 font-cinzel">ใบที่ ${idx + 1}</span>
+            </div>
+          `;
+        }
+      }).join('');
+
+      const btn = document.getElementById('btn-confirm-conspiracy-pick');
+      btn.disabled = true;
+      btn.className = "w-full py-2.5 rounded-lg bg-stone-900 border border-stone-800 text-stone-600 text-xs font-cinzel font-bold cursor-not-allowed";
+      btn.innerText = "เลือกการ์ดที่คว่ำอยู่ 1 ใบ";
+
+      document.getElementById('conspiracy-pick-left-modal').classList.remove('hidden');
+    });
+
+    function selectConspiracyLeftCard(idx) {
+      selectedConspiracyPickIdx = idx;
+      document.querySelectorAll('[id^="conspiracy-left-card-"]').forEach(el => {
+        el.classList.remove('ring-2', 'ring-amber-400', 'scale-105');
+      });
+      const target = document.getElementById(`conspiracy-left-card-${idx}`);
+      if (target) target.classList.add('ring-2', 'ring-amber-400', 'scale-105');
+
+      const btn = document.getElementById('btn-confirm-conspiracy-pick');
+      btn.disabled = false;
+      btn.className = "w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-600 to-rose-900 text-stone-950 text-xs font-cinzel font-black cursor-pointer shadow-xl";
+      btn.innerText = `✓ ยืนยันหยิบการ์ดใบที่ ${idx + 1}`;
+    }
+
+    function confirmConspiracyLeftPick() {
+      if (selectedConspiracyPickIdx === null) return;
+      socket.emit('submit_conspiracy_pick', {
+        roomCode: currentRoomCode,
+        tryalIndex: selectedConspiracyPickIdx
+      });
+    }
+
+    socket.on('conspiracy_pick_confirmed', ({ chosenIndex, leftPlayerName }) => {
+      const btn = document.getElementById('btn-confirm-conspiracy-pick');
+      if (btn) {
+        btn.disabled = true;
+        btn.className = "w-full py-2.5 rounded-lg bg-emerald-950 border border-emerald-500/50 text-emerald-300 text-xs font-cinzel font-bold cursor-not-allowed";
+        btn.innerText = `⏳ เลือกใบที่ ${chosenIndex + 1} ของ [${leftPlayerName}] แล้ว (รอสหายคนอื่น...)`;
+      }
+    });
+
+    socket.on('conspiracy_inspect_received_card', ({ fromPlayerName, cardType }) => {
+      clearInterval(conspiracyPickInterval);
+      document.getElementById('conspiracy-pick-left-modal').classList.add('hidden');
+      document.getElementById('conspiracy-cat-modal').classList.add('hidden');
+
+      const vis = getTryalVisual(cardType);
+      document.getElementById('conspiracy-inspect-desc').innerHTML = `ท่านได้รับการ์ดไต่สวน 1 ใบจาก <b class="text-amber-400">[${fromPlayerName}]</b>`;
+      const cardBox = document.getElementById('conspiracy-inspect-card');
+      cardBox.className = `h-24 w-20 mx-auto rounded-xl border flex flex-col items-center justify-center font-cinzel ${vis.boxClass}`;
+      cardBox.innerHTML = `
+        <span class="text-2xl">${vis.icon}</span>
+        <span class="text-[8.5px] mt-1 font-bold text-center px-1">${vis.label}</span>
+        <span class="text-[7px] opacity-85">(${vis.th})</span>
+      `;
+      document.getElementById('conspiracy-inspect-modal').classList.remove('hidden');
+    });
+
+    function closeConspiracyInspectModal() {
+      document.getElementById('conspiracy-inspect-modal').classList.add('hidden');
+    }
+
+    socket.on('night_sync', ({ subPhase, isWitch, isConstable, isAlive, witchRank, alivePlayers, previousGavelId }) => {
+      switchScreen('phase-night');
+      const sleepBox = document.getElementById('townsperson-sleep-box');
+      const witchBox = document.getElementById('witch-coven-box');
+      const constableBox = document.getElementById('constable-gavel-box');
+
+      const witchInd = document.getElementById('hud-witch-indicator');
+      if (isWitch) witchInd.classList.remove('hidden');
+
+      sleepBox.classList.remove('hidden');
+      witchBox.classList.add('hidden');
+      constableBox.classList.add('hidden');
+
+      if (subPhase === 'WITCH') {
+        if (isWitch) {
+          sleepBox.classList.add('hidden');
+          witchBox.classList.remove('hidden');
+
+          const leadDisplay = document.getElementById('night-lead-display');
+          const killTargetsBox = document.getElementById('night-kill-targets');
+          const chatInput = document.getElementById('witch-chat-inp');
+          chatInput.disabled = !isAlive;
+
+          if (isAlive) {
+            leadDisplay.innerText = `ท่านคือแม่มด! จงเลือกเหยื่อที่จะลอบสังหาร`;
+            killTargetsBox.innerHTML = alivePlayers.map(p => {
+              if (p.hasAsylum) {
+                return `<button disabled class="p-2 bg-stone-900 border border-stone-700 text-stone-500 rounded-lg text-xs font-cinzel font-bold cursor-not-allowed" title="เป้าหมายอยู่ในการคุ้มครอง">
+                  🏥 ซ่อนตัว (${p.name})
+                </button>`;
+              }
+              return `<button onclick="confirmNightKill('${p.socketId}', '${p.name}')" class="p-2 bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-200 rounded-lg text-xs font-cinzel font-bold cursor-pointer">
+                🗡️ สังหาร ${p.name}
+              </button>`;
+            }).join('');
+          } else {
+            leadDisplay.innerText = `ท่านเป็นวิญญาณแม่มดที่ตายแล้ว...`;
+            killTargetsBox.innerHTML = `<div class="col-span-2 text-xs text-stone-500 italic">เฝ้าดูการตัดสินใจของสหาย</div>`;
+          }
+        } else {
+          sleepBox.innerHTML = `
+            <span class="text-4xl animate-pulse">🌑</span>
+            <h3 class="text-lg font-cinzel font-bold text-rose-400">แม่มดกำลังเลือกเหยื่อ...</h3>
+            <p class="text-xs text-stone-400 max-w-sm mt-3">
+              จงหลับตาลงให้สนิท... หากท่านแอบดูอาจจะเป็นอันตรายถึงชีวิต
+            </p>
+          `;
+        }
+      } else if (subPhase === 'CONSTABLE') {
+        if (isConstable && isAlive) {
+          sleepBox.classList.add('hidden');
+          constableBox.classList.remove('hidden');
+          
+          constableBox.innerHTML = `
+            <div class="text-xl">🔨</div>
+            <h3 class="text-sm font-cinzel font-bold text-amber-300">ท่านคือสายตรวจ (Constable) จงเลือกวางค้อนคุ้มกัน 1 คน:</h3>
+            <div id="constable-gavel-targets" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+          `;
+          
+          const gavelTargets = document.getElementById('constable-gavel-targets');
+          gavelTargets.innerHTML = alivePlayers.map(p => {
+            if (p.socketId === myId) return ''; 
+            if (p.socketId === previousGavelId) return ''; 
+            return `<button onclick="placeConstableGavel('${p.socketId}')" class="p-2 bg-amber-950/80 hover:bg-amber-900 border border-amber-500/40 text-amber-200 rounded-lg text-xs font-cinzel font-bold cursor-pointer">
+              🔨 คุ้มกัน ${p.name}
+            </button>`;
+          }).join('');
+          
+          if (gavelTargets.innerHTML.trim() === '') {
+            gavelTargets.innerHTML = `<div class="col-span-4 text-xs text-stone-500 italic">ไม่มีเป้าหมายให้คุ้มกันได้ในคืนนี้...</div>`;
+          }
+        } else {
+          sleepBox.innerHTML = `
+            <span class="text-4xl animate-pulse">🔨</span>
+            <h3 class="text-lg font-cinzel font-bold text-amber-300">สายตรวจกำลังปฏิบัติหน้าที่...</h3>
+            <p class="text-xs text-stone-400 max-w-sm mt-3">
+              แม่มดได้กลับไปหลับแล้ว บัดนี้สายตรวจกำลังลืมตาวางค้อนคุ้มครองชาวเมือง จงหลับตาต่อไป
+            </p>
+          `;
+        }
+      }
+    });
+
+    function placeConstableGavel(targetSocketId) {
+      socket.emit('constable_place_gavel', { roomCode: currentRoomCode, targetSocketId });
+    }
+
+    socket.on('constable_gavel_placed', () => {
+      document.getElementById('constable-gavel-box').innerHTML = `<div class="text-xs text-amber-300 font-cinzel py-4">✓ ท่านได้วางค้อน Gavel คุ้มกันเป้าหมายเรียบร้อยแล้ว</div>`;
+    });
+
+    function sendWitchChat() {
+      const inp = document.getElementById('witch-chat-inp');
+      if (inp.value.trim()) { socket.emit('witch_chat_msg', { roomCode: currentRoomCode, text: inp.value.trim() }); inp.value = ''; }
+    }
+
+    socket.on('witch_chat_received', ({ senderName, rank, text }) => {
+      const box = document.getElementById('witch-chat-messages');
+      box.innerHTML += `<div class="p-1 rounded bg-black/50"><b class="text-amber-400 font-cinzel text-[11px]">แม่มด #${rank} (${senderName}):</b> <span class="text-stone-200 text-xs">${text}</span></div>`;
+      box.scrollTop = box.scrollHeight;
+    });
+
+    function confirmNightKill(targetSocketId, targetName) {
+      if (confirm(`ยืนยันลอบสังหาร [${targetName}]?`)) {
+        socket.emit('witch_execute_kill', { roomCode: currentRoomCode, targetSocketId });
+      }
+    }
+
+    let confessionTimer = null;
+    socket.on('confession_phase_started', ({ duration }) => {
+      switchScreen('phase-confession');
+      selectedConfessTryalIdx = null;
+
+      let s = duration;
+      document.getElementById('confession-timer-num').innerText = s;
+      clearInterval(confessionTimer);
+      confessionTimer = setInterval(() => {
+        s--;
+        if (s >= 0) document.getElementById('confession-timer-num').innerText = s;
+        if (s <= 0) clearInterval(confessionTimer);
+      }, 1000);
+
+      const me = localRoomState ? (localRoomState.players || []).find(p => p && p.socketId === myId) : null;
+      const container = document.getElementById('my-confession-tryals');
+      const btn = document.getElementById('btn-confess-action');
+      const btnPhips = document.getElementById('btn-phips-free-confess');
+
+      // เช็คสกิล วิลเลียม ฟิปส์ (หรือ มาร์ธา คอรีย์ ที่จำแลงเป็นวิลเลียม ฟิปส์)
+      const myEff = getEffectiveCharInfo(localRoomState, me);
+      const isPhips = myEff.effectiveChar && myEff.effectiveChar.id === 'william';
+      const phipsUsed = me && me.charState && me.charState.phipsUsed;
+
+      if (me && me.isAlive && isPhips && !phipsUsed) {
+        btnPhips.classList.remove('hidden');
+      } else {
+        btnPhips.classList.add('hidden');
+      }
+
+      if (me && me.isAlive && me.tryals) {
+        container.innerHTML = me.tryals.map((t, idx) => {
+          if (!t) return '';
+          return t.revealed 
+            ? `<div class="h-16 w-11 rounded bg-black/50 border border-white/10 flex items-center justify-center text-[9px] text-stone-500">เปิดแล้ว</div>` 
+            : `<div id="confess-tryal-${idx}" onclick="selectConfessTryal(${idx})" class="cursor-pointer hover:scale-105 transition">${getTTS_TryalCardHTML()}</div>`;
+        }).join('');
+        btn.disabled = true;
+        btn.className = "w-full py-3 rounded-lg bg-stone-900 text-stone-600 font-cinzel font-bold text-xs cursor-not-allowed";
+        btn.innerText = "เลือกการ์ด 1 ใบเพื่อสารภาพบาป";
+      } else {
+        container.innerHTML = `<div class="col-span-5 text-stone-500 text-xs italic">วิญญาณไม่อาจสารภาพบาปได้...</div>`;
+        btn.disabled = true;
+        btn.className = "w-full py-3 rounded-lg bg-stone-950 text-stone-700 font-cinzel font-bold text-xs cursor-not-allowed border border-stone-800";
+        btn.innerText = "ท่านเสียชีวิตแล้ว";
+      }
+    });
+
+    function selectConfessTryal(idx) {
+      selectedConfessTryalIdx = idx;
+      document.querySelectorAll('#my-confession-tryals > div').forEach(el => el.classList.remove('ring-2', 'ring-amber-400'));
+      const el = document.getElementById(`confess-tryal-${idx}`);
+      if (el) el.classList.add('ring-2', 'ring-amber-400');
+
+      const btn = document.getElementById('btn-confess-action');
+      btn.disabled = false;
+      btn.className = "w-full py-3 rounded-lg bg-gradient-to-r from-amber-600 to-rose-900 text-stone-950 font-cinzel font-black text-xs cursor-pointer shadow-lg";
+      btn.innerText = `✓ สารภาพบาป (เปิดการ์ดใบที่ ${idx + 1})`;
+    }
+
+    function submitConfession() {
+      socket.emit('player_submit_confession', { roomCode: currentRoomCode, tryalIndex: selectedConfessTryalIdx, usePhipsSkill: false });
+    }
+
+    function submitPhipsFreeConfession() {
+      socket.emit('player_submit_confession', { roomCode: currentRoomCode, usePhipsSkill: true });
+    }
+
+    socket.on('confession_confirmed', () => {
+      document.getElementById('phase-confession').innerHTML = `
+        <div class="medieval-modal rounded-2xl p-8 max-w-sm w-full text-center space-y-3">
+          <div class="text-3xl">🕊️</div>
+          <h3 class="text-lg font-cinzel font-bold text-emerald-300">สารภาพบาปสำเร็จ!</h3>
+          <p class="text-xs text-stone-300">ท่านได้รับการคุ้มครองและจะรอดชีวิตจากการถูกสังหารในคืนนี้</p>
+        </div>
+      `;
+    });
+
+    socket.on('court_log', ({ time, msg }) => {
+      console.log(`[LOG] ${time}: ${msg}`);
+      const banner = document.getElementById('live-court-log-banner');
+      if (banner) {
+        banner.innerHTML = msg.replace(/\*\*(.*?)\*\*/g, '<b class="text-amber-300">$1</b>');
+      }
+    });
+
+    socket.on('game_over', ({ winner, reason, players, log }) => {
+      switchScreen('phase-gameover'); 
+      document.getElementById('conspiracy-cat-modal').classList.add('hidden');
+      document.getElementById('conspiracy-pick-left-modal').classList.add('hidden');
+      document.getElementById('conspiracy-inspect-modal').classList.add('hidden');
+      document.getElementById('charlatan-modal').classList.add('hidden');
+      document.getElementById('gravedigger-modal').classList.add('hidden');
+      document.getElementById('inquisitor-modal').classList.add('hidden');
+      document.getElementById('samuel-discard-modal').classList.add('hidden');
+      document.getElementById('tituba-reorder-modal').classList.add('hidden');
+      
+      const winnerEl = document.getElementById('gameover-winner');
+      winnerEl.innerText = `${winner} ได้รับชัยชนะ!`;
+      winnerEl.className = winner.includes('WITCHES') 
+        ? 'text-3xl md:text-4xl font-medieval font-black text-rose-500 drop-shadow-lg' 
+        : 'text-3xl md:text-4xl font-medieval font-black text-emerald-400 drop-shadow-lg';
+        
+      document.getElementById('gameover-reason').innerText = reason;
+
+      const playerListEl = document.getElementById('gameover-players-list');
+      playerListEl.innerHTML = players.map(p => {
+        const statusIcon = p.isAlive ? '💗' : '⚰️';
+        const roleIcon = p.isWitch ? '🧙‍♀️' : '🕊️';
+        const roleColor = p.isWitch ? 'text-rose-400' : 'text-emerald-400';
+        const statusText = p.isAlive ? 'รอดชีวิต' : 'เสียชีวิต';
+        
+        const tryalsHTML = p.finalTryals.map(t => {
+          const vis = getTryalVisual(t);
+          return `<span class="px-1.5 py-0.5 border rounded text-[9px] ${vis.badgeClass}">${vis.icon} ${vis.label}</span>`;
+        }).join('');
+
+        return `
+          <div class="p-2.5 bg-stone-950/60 border border-white/5 rounded-lg flex flex-col gap-1.5">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-amber-100">${p.name} <span class="text-[10px] text-amber-500/80 font-normal">(${p.char})</span></span>
+              <div class="flex items-center gap-2 text-[11px]">
+                <span class="${p.isAlive ? 'text-emerald-500' : 'text-stone-500'} bg-black/40 px-2 py-0.5 rounded-full">${statusIcon} ${statusText}</span>
+                <span class="${roleColor} bg-black/40 px-2 py-0.5 rounded-full font-bold">${roleIcon} ${p.isWitch ? 'แม่มด' : 'ชาวเมือง'}</span>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-1 mt-0.5">
+              ${tryalsHTML}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const logListEl = document.getElementById('gameover-log-list');
+      logListEl.innerHTML = log.map(l => {
+        let formattedMsg = l.msg.replace(/\*\*(.*?)\*\*/g, '<b class="text-amber-400">$1</b>');
+        return `<div class="py-1.5 border-b border-white/5 leading-relaxed"><span class="text-stone-500 mr-2 font-mono text-[10px]">[${l.time}]</span> ${formattedMsg}</div>`;
+      }).join('');
+      
+      setTimeout(() => logListEl.scrollTop = logListEl.scrollHeight, 100);
+    });
+
+    socket.on('error_msg', (msg) => alert(msg));
+  </script>
+</body>
+</html>
